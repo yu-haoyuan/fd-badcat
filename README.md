@@ -4,7 +4,7 @@ fd-sds
 ---
 dabu 1013
 cascade 方案  
-llm：qwen2.5b-instruct  
+llm：qwen2.5-0.6b-instruct，能说最简单的人话就行  
 tts：中英文分开，延迟应该没有体感差别  
 vad：silero vad  
 asr：paraformer？暂定  
