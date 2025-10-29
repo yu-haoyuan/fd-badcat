@@ -238,10 +238,14 @@ def check_overlap(list_a: List[Dict], list_b: List[Dict]) -> int:
 if __name__ == "__main__":
     # 初始化DeepSeek客户端
     client = OpenAI(api_key=DEEPSEEK_API_KEY, base_url=DEEPSEEK_BASE_URL)
-    
+    parser = argparse.ArgumentParser(
+        description="Run DeepSeek behavior evaluation on a dataset directory."
+    )
+    parser.add_argument("--data_dir", type=str, required=True)
+    data_dir = parser.parse_args().data_dir
     # 设置参数
     # data_dir = "./dev/Follow-up_Questions"  # 输入：存放wav音频数据的目录
-    data_dir = "/home/sds/output/merge/Follow-upQuestions"
+    # data_dir = "/home/sds/output/merge/Follow-up Questions"
     output_dir = "./dev/json_group"  # 输出：Follow-up_Questions_content_tags.json文件的保存目录
     task = "behavior"  # 任务名称，这里不用修改
     
