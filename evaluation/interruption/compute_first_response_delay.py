@@ -45,8 +45,15 @@ def process_folder(folder_path):
         print(f"\n最终平均值: {avg:.3f} (共 {len(diffs)} 个有效样本)")
     else:
         print("没有有效结果。")
+    return avg, len(diffs)
 
 
 if __name__ == "__main__":
-    folder = "/home/sds/output/merge/Follow-upQuestions"  # 修改为你的文件夹路径
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Compute first response delay from JSON files in a folder."
+    )
+    parser.add_argument("--folder", type=str, required=True)
+    args = parser.parse_args()
+    folder = args.folder
     process_folder(folder)

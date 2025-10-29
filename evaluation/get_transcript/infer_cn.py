@@ -89,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--root_dir",
         type=str,
-        default="./dev/Follow-up_Questions",
+        default="./dev/Follow-up Questions",
         help="Folder containing .wav files",
     )
     parser.add_argument(
