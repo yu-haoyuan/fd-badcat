@@ -14,7 +14,7 @@ import json
 import tempfile
 import soundfile as sf
 
-root_path = "."
+root_path = "model"
 
 ASR_MODEL = sherpa_onnx.OnlineRecognizer.from_transducer(
     encoder=f"{root_path}/sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16/encoder-epoch-99-avg-1.onnx",
