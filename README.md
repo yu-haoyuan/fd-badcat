@@ -9,3 +9,8 @@ tts：中英文分开，延迟应该没有体感差别
 vad：silero vad  
 asr：paraformer？暂定  
 然后写一个websocket通过网页测试demo/批量上传测试数据，先跑通baseline，再考虑训练  
+
+dabu1031
+test_path是应对interrupt的,然后对接了evaluate的脚本,规范路径
+
+test_rej继续拓展脚本,希望能做到处理停顿问题和bc问题
