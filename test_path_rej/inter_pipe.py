@@ -1,181 +1,213 @@
-"""
-✅ Silero + Sherpa 流式处理管线（修复版）
-✅ 640ms 静音确认 & 打断检测
-✅ 自动遍历 /home/sds/data 中的 wav 文件
-✅ 每轮对话写入 /home/sds/output/{basename}_r.jsonl
-"""
-
 import os, wave, json, time, torch, soundfile as sf, numpy as np
 from pathlib import Path
 from tqdm import tqdm
 from silero_vad import load_silero_vad, VADIterator
 from module import asr, llm_qwen3o, tts, get_wav
+class ConversationEngine:
+    """
+    Full-duplex Conversation Engine
+    实现 LISTEN → SPEAK 循环的基础框架
+    每一轮输出 listen/speak 两个子块
+    """
 
-sample_rate = 16000
-window_size = 256
-frame_sec = window_size / sample_rate
-interrupt_limit = int(1.5 / frame_sec)
-end_hold_sec = 0.64
-end_hold_frames = int(end_hold_sec / frame_sec)
+    def __init__(self, sample_rate=16000, window_size=256):
+        # ========== 常量 ==========
+        self.SAMPLE_RATE = sample_rate #16kHz
+        self.WINDOW_SIZE = window_size #256 samples (~16ms)
+        self.FRAME_SEC = window_size / sample_rate # 256 / 16000 = 0.016s
+        self.INTERRUPT_LIMIT = int(1.5 / self.FRAME_SEC) #1.5 / 0.016 = 94 frames
 
-vad_model = load_silero_vad()
-vad_iterator = VADIterator(vad_model, sampling_rate=sample_rate)
+        # ========== 状态变量 ==========
+        self.STATE = "LISTEN"       # 当前状态
+        self.IN_SPEECH = False      # 当前是否处于一段语音中
+        self.BUFFER = []            # 累积帧缓冲
+        self.TURN_IDX = 0           # 全局轮数
+        self.MEDIA_TIME = 0.0       # 累计音频时间（秒）
+        self.FRAME_IDX = 0          # 帧计数
+        self.CURRENT_TURN = None    # 当前轮的 listen + speak 数据
+        self.SILENCE_COUNTER = 0    # 静音计数器
+        self.INTERRUPT_COUNT = 0    # 打断帧计数
 
-def stream_audio(path):
-    with wave.open(str(path), "rb") as wf:
-        while True:
-            data = wf.readframes(window_size)
-            if not data:
-                break
-            chunk = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
-            if len(chunk) < window_size:
-                break
-            yield chunk
+        # ========== 路径与模型接口 ==========
+        self.output_dir = None
+        self.vad_model = load_silero_vad()
+        self.vad_iterator = VADIterator(self.vad_model, sampling_rate=self.SAMPLE_RATE)
 
-def detect_vad_frame(chunk):
-    if not hasattr(detect_vad_frame, "buf"):
-        detect_vad_frame.buf = np.zeros(0, dtype=np.float32)
-    detect_vad_frame.buf = np.concatenate([detect_vad_frame.buf, chunk])
-    if len(detect_vad_frame.buf) >= 2 * window_size:
-        tensor = torch.from_numpy(detect_vad_frame.buf[: 2 * window_size])
-        event = vad_iterator(tensor, return_seconds=True)
-        detect_vad_frame.buf = np.zeros(0, dtype=np.float32)
-        return event
-    return None
+    # -------------------------------------------------------
+    def stream_audio(self, audio_path):
+        """逐帧读取音频流（16ms一帧）"""
+        with wave.open(str(audio_path), "rb") as wf:
+            while True:
+                data = wf.readframes(self.WINDOW_SIZE)
+                if not data:
+                    break
+                chunk = np.frombuffer(data, dtype=np.int16).astype(np.float32) / 32768.0
+                if len(chunk) < self.WINDOW_SIZE:
+                    break
+                yield chunk
 
-def save_audio(path, audio_float32):
-    path.parent.mkdir(parents=True, exist_ok=True)
-    audio_i16 = (np.clip(audio_float32, -1.0, 1.0) * 32768).astype(np.int16)
-    with wave.open(str(path), "wb") as wf:
-        wf.setnchannels(1)
-        wf.setsampwidth(2)
-        wf.setframerate(sample_rate)
-        wf.writeframes(audio_i16.tobytes())
+    # -------------------------------------------------------
+    def detect_vad_frame(self, chunk):
+        """VAD 检测函数（返回 start / end / None）"""
+        if not hasattr(self, "_vad_buf"):
+            self._vad_buf = np.zeros(0, dtype=np.float32)
+        self._vad_buf = np.concatenate([self._vad_buf, chunk])
+        if len(self._vad_buf) >= 2 * self.WINDOW_SIZE:
+            tensor = torch.from_numpy(self._vad_buf[: 2 * self.WINDOW_SIZE])
+            event = self.vad_iterator(tensor, return_seconds=True)
+            self._vad_buf = np.zeros(0, dtype=np.float32)
+            return event
+        return None
 
-def stream_vad_asr_pipeline(audio_path, output_dir):
-    basename = Path(audio_path).stem
-    jsonl_path = output_dir / f"{basename}_r.jsonl"
-    if jsonl_path.exists():
-        jsonl_path.unlink()
-    state = "LISTEN"
-    in_speech = False
-    buffer = []
-    interrupt_buf = []
-    interrupt_count = 0
-    silence_counter = 0
-    frame_idx = 0
-    turn_idx = 0
-    media_time = 0.0
-    current_speak_turn = None
-    for frame in stream_audio(str(audio_path)):
-        event = detect_vad_frame(frame)
-        media_time = frame_idx * frame_sec
-        frame_idx += 1
-        if state == "LISTEN":
-            if event and "start" in event and not in_speech:
-                in_speech = True
-                buffer = [frame]
-                silence_counter = 0
-            elif in_speech:
-                buffer.append(frame)
-                if event and "end" in event:
-                    silence_counter = 1
-                elif silence_counter > 0 and event and "start" in event:
-                    silence_counter = 0
-                elif silence_counter > 0:
-                    silence_counter += 1
-                    if silence_counter >= end_hold_frames:
-                        silence_counter = 0
-                        in_speech = False
-                        full_audio = np.concatenate(buffer)
-                        buffer.clear()
-                        user_path = output_dir / f"{basename}_u{turn_idx+1}.wav"
-                        save_audio(user_path, full_audio)
-                        asr_start = time.perf_counter()
-                        text = asr(str(user_path))
-                        asr_elapsed = time.perf_counter() - asr_start
-                        llm_start = time.perf_counter()
-                        reply = llm_qwen3o(text)
-                        llm_elapsed = time.perf_counter() - llm_start
-                        r_path = output_dir / f"{basename}_r{turn_idx+1}.wav"
-                        tts_start = time.perf_counter()
-                        tts(reply, str(r_path))
-                        tts_elapsed = time.perf_counter() - tts_start
-                        audio_data, sr = sf.read(r_path)
-                        duration = len(audio_data) / sr
-                        sys_start = media_time + asr_elapsed + llm_elapsed + tts_elapsed
-                        info = {
-                            "turn": turn_idx + 1,
-                            "user_end": round(media_time, 2),
-                            "asr_time": round(asr_elapsed, 2),
-                            "llm_time": round(llm_elapsed, 2),
-                            "tts_time": round(tts_elapsed, 2),
-                            "tts_dur": round(duration, 2),
-                            "sys_start": round(sys_start, 2),
-                            "tts_file": r_path.name
-                        }
-                        with open(jsonl_path, "a", encoding="utf-8") as f:
-                            f.write(json.dumps(info, ensure_ascii=False) + "\n")
-                        turn_idx += 1
-                        state = "SPEAK"
-                        current_speak_turn = turn_idx
-                        interrupt_buf.clear()
-                        interrupt_count = 0
-        elif state == "SPEAK":
-            if event and "start" in event:
-                interrupt_buf = [frame]
-                interrupt_count = 1
-            elif interrupt_buf:
-                interrupt_buf.append(frame)
-                interrupt_count += 1
-                if event and "end" in event:
-                    interrupt_buf.clear()
-                    interrupt_count = 0
-                elif interrupt_count >= interrupt_limit:
-                    interrupt_time = round(media_time, 2)
-                    if jsonl_path.exists():
-                        lines = [l.strip() for l in jsonl_path.read_text(encoding="utf-8").splitlines() if l.strip()]
-                        if lines:
-                            last_obj = json.loads(lines[-1])
-                            if last_obj.get("turn") == current_speak_turn:
-                                last_obj["interrupt_time"] = interrupt_time
-                                lines[-1] = json.dumps(last_obj, ensure_ascii=False)
-                                jsonl_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-                    buffer = interrupt_buf.copy()
-                    interrupt_buf.clear()
-                    interrupt_count = 0
-                    state = "LISTEN"
-                    in_speech = True
-                    silence_counter = 0
-    vad_iterator.reset_states()
 
-def process_folder(folder, save_root):
-    jsonl = folder / f"{folder.name}_r.jsonl"
-    if not jsonl.exists():
+    def process_user_segment(self, audio_buf):
+        """对一段完整的用户语音执行 ASR→LLM→TTS 并写入结果"""
+        asr_start = time.perf_counter()
+        asr_text = asr(audio_buf)
+        asr_time = time.perf_counter() - asr_start
+
+        llm_start = time.perf_counter()
+        decision = llm(asr_text)  # {"is_finished": bool, "reply": "..."}
+        llm_time = time.perf_counter() - llm_start
+
+        if decision.get("is_finished", True):
+            # ---- 正常进入TTS阶段 ----
+            tts_start = time.perf_counter()
+            tts_file = tts(decision.get("reply", ""))
+            tts_time = time.perf_counter() - tts_start
+
+            audio_data, sr = sf.read(tts_file)
+            tts_dur = len(audio_data) / sr
+            sys_start = self.MEDIA_TIME + asr_time + llm_time + tts_time
+
+            self.CURRENT_TURN = {
+                "turn": self.TURN_IDX + 1,
+                "user_end": round(self.MEDIA_TIME, 2),
+                "asr_time": round(asr_time, 2),
+                "llm_time": round(llm_time, 2),
+                "tts_time": round(tts_time, 2),
+                "tts_dur": round(tts_dur, 2),
+                "sys_start": round(sys_start, 2),
+                "tts_file": Path(tts_file).name
+            }
+
+            self.STATE = "SPEAK"
+            self.IN_SPEECH = False
+            self.BUFFER.clear()
+        else:
+            # ---- 未结束，继续监听 ----
+            self.STATE = "LISTEN"
+            self.IN_SPEECH = True
+
+
+    # -------------------------------------------------------
+    def handle_listen(self, frame, event):
+        """LISTEN 状态：检测用户语音、判断是否说完、决定是否进入 SPEAK"""
+
+        # --- 特殊入口：来自短打断 ---
+        if self.BUFFER and not self.IN_SPEECH:
+            self.process_user_segment(self.BUFFER)
+            return
+
+        # --- 1. 用户开始说话 ---
+        if event and "start" in event and not self.IN_SPEECH:
+            self.IN_SPEECH = True
+            self.BUFFER = [frame]
+            return
+
+        # --- 2. 用户正在说话 ---
+        if not self.IN_SPEECH:
+            return  # 用户未发言，直接跳过本帧
+
+        self.BUFFER.append(frame)
+
+        # --- 3. 检测语音结束 ---
+        if event and "end" in event:
+            self.process_user_segment(self.BUFFER)
+            return
+
+
+    def handle_speak(self, frame, event):
+        """SPEAK：系统说话中。检测用户短/长打断：
+        - 短打断：<1.5s 且出现 end → ASR+LLM 判定；interrupt=True 才切 LISTEN
+        - 长打断：≥1.5s，无需 end → 直接切 LISTEN
+        """
+
+        # 1) 首次检测到用户开口：开始累计打断缓冲
+        if event and "start" in event and not self.IN_SPEECH:
+            self.IN_SPEECH = True
+            self.interrupt_buf = [frame]
+            self.interrupt_start_time = self.MEDIA_TIME
+            self.INTERRUPT_COUNT = 1
+            return
+
+        # 2) 正在累计可能的打断片段
+        if self.IN_SPEECH:
+            self.interrupt_buf.append(frame)
+            self.INTERRUPT_COUNT += 1
+
+            # 2.1 短打断：在达到 1.5s 之前出现了 end → 做一次语义判定
+            if event and "end" in event and self.INTERRUPT_COUNT < self.INTERRUPT_LIMIT:
+                seg_audio = np.concatenate(self.interrupt_buf)
+                seg_text  = asr(seg_audio)
+                intent    = llm(seg_text)   # 期望 {"interrupt": bool}
+
+                if intent.get("interrupt", False):
+                    # —— 真正打断：记录时间，写入本轮，切 LISTEN，并把这段语音交给下一轮
+                    self.CURRENT_TURN.setdefault("speak", {})["interrupt_time"] = round(self.MEDIA_TIME, 2)
+                    self.write_turn()
+                    self.STATE = "LISTEN"
+                    self.BUFFER = self.interrupt_buf.copy()  # 种子给下一轮，避免丢帧
+                    self.IN_SPEECH = True
+                else:
+                    # —— 只是backchannel/鼓励继续：忽略，留在 SPEAK
+                    self.IN_SPEECH = False
+
+                # 清理本段缓存
+                self.interrupt_buf.clear()
+                self.INTERRUPT_COUNT = 0
+                return
+
+            # 2.2 长打断：累计达到/超过 1.5s，无需等待 end，直接切 LISTEN
+            if self.INTERRUPT_COUNT >= self.INTERRUPT_LIMIT:
+                self.CURRENT_TURN.setdefault("speak", {})["interrupt_time"] = round(self.MEDIA_TIME, 2)
+                self.write_turn()
+                self.STATE = "LISTEN"
+                self.BUFFER = self.interrupt_buf.copy()  # 交给下一轮继续累计
+                self.IN_SPEECH = True
+                self.interrupt_buf.clear()
+                self.INTERRUPT_COUNT = 0
+                return
+
+        # 3) 未检测到用户发声：SPEAK 持续（离线不模拟播放结束）
         return
-    data = [json.loads(l) for l in open(jsonl) if l.strip()]
-    data.sort(key=lambda x: x["sys_start"])
-    segs, cur_len, sr = [], 0, 16000
-    for s in data:
-        wav, sr = sf.read(folder / s["tts_file"])
-        if wav.ndim > 1:
-            wav = wav[:, 0]
-        pad = int(max(0.0, s["sys_start"] - cur_len) * sr)
-        if pad > 0:
-            segs.append(np.zeros(pad, dtype=wav.dtype))
-            cur_len += pad / sr
-        cut = None
-        if "interrupt_time" in s and s["sys_start"] + s["tts_dur"] > s["interrupt_time"]:
-            cut = int(max(0.0, s["interrupt_time"] - s["sys_start"]) * sr)
-        if cut is not None:
-            wav = wav[:cut]
-        segs.append(wav)
-        cur_len += len(wav) / sr
-    if segs:
-        save_root.mkdir(parents=True, exist_ok=True)
-        out = save_root / f"{folder.name}_output.wav"
-        sf.write(out, np.concatenate(segs), sr)
-        print(out)
+    # -------------------------------------------------------
+    def run(self, audio_path, output_dir):
+        """主循环：逐帧执行"""
+        self.output_dir = Path(output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        for frame in self.stream_audio(audio_path):
+            event = self.detect_vad_frame(frame)
+            self.MEDIA_TIME = self.FRAME_IDX * self.FRAME_SEC
+            self.FRAME_IDX += 1
+
+            if self.STATE == "LISTEN":
+                self.handle_listen(frame, event)
+            elif self.STATE == "SPEAK":
+                self.handle_speak(frame, event)
+
+        # 收尾：最后一轮未写入时写入
+        if self.CURRENT_TURN is not None:
+            self.write_turn()
+
+    # -------------------------------------------------------
+    def write_turn(self):
+        """将当前 turn 写入 JSONL"""
+        jsonl_path = self.output_dir / f"turns.jsonl"
+        with open(jsonl_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(self.CURRENT_TURN, ensure_ascii=False) + "\n")
+        self.CURRENT_TURN = None
 
 def main():
     exp_name = "exp1"
