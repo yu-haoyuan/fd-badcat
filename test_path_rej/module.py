@@ -148,6 +148,60 @@ def get_wav(input_dir="/home/sds/data", mode="time"):
     return wav_files
 
 
+def api_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000) -> str:
+    """
+    调用 Qwen3-Omni 流式接口（OpenAI SDK 方式）。
+    支持文字 + 音频输入，与 HTTP 版参数一致。
+    """
+    client = openai.OpenAI(api_key="sk-553f353ca3d1436b9ec9a9c728e30958", 
+                           base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
+
+    # --- 构造消息 ---
+    messages = [{"role": "system", "content": "你是一个语音客服,你要没有任何格式的在10个字左右回答用户"}]
+
+    if audio_array is not None:
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tmp:
+                sf.write(tmp.name, audio_array, sr)
+                tmp.seek(0)
+                audio_b64 = base64.b64encode(tmp.read()).decode("utf-8")
+            messages.append({
+                "role": "user",
+                "content": [
+                    {"type": "audio_url", "audio_url": {"url": f"data:audio/wav;base64,{audio_b64}"}} ,
+                    {"type": "text", "text": prompt}
+                ]
+            })
+        except Exception as e:
+            print(f"[QWEN AUDIO ENCODE ERROR] {e}")
+            return ""
+    else:
+        messages.append({"role": "user", "content": [{"type": "text", "text": prompt}]})
+
+    # --- 发起流式请求 ---
+    completion = client.chat.completions.create(
+        model="qwen3-omni-flash",
+        messages=messages,
+        modalities=["text"],
+        audio={"voice": "Cherry", "format": "wav"},
+        stream=True,
+        stream_options={"include_usage": True},
+    )
+
+    text_output = ""
+    try:
+        for chunk in completion:
+            if chunk.choices:
+                delta = chunk.choices[0].delta
+                if hasattr(delta, "content") and delta.content:
+                    text_output += delta.content
+    except Exception as e:
+        print(f"[QWEN STREAM ERROR] {e}")
+
+    return text_output.strip()
+
+
+
 def main():
     base_dir = Path("test_wav")
 

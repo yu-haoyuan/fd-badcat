@@ -62,16 +62,20 @@ class ConversationEngine:
 
     def process_user_segment(self, audio_buf):
         """对一段完整的用户语音执行 ASR→LLM→TTS 并写入结果"""
+        basename = self.output_dir.name
+        turn_id = self.TURN_IDX
+         # ========== ASR ==========
         asr_start = time.perf_counter()
         asr_text = asr(audio_buf)
         asr_time = time.perf_counter() - asr_start
-
+        # ========== LLM ==========
         llm_start = time.perf_counter()
         decision = llm(asr_text)  # {"is_finished": bool, "reply": "..."}
         llm_time = time.perf_counter() - llm_start
 
         if decision.get("is_finished", True):
-            # ---- 正常进入TTS阶段 ----
+            #========== TTS ==========
+            tts_path = self.output_dir / f"{basename}_r{turn_id}.wav"
             tts_start = time.perf_counter()
             tts_file = tts(decision.get("reply", ""))
             tts_time = time.perf_counter() - tts_start
@@ -81,16 +85,17 @@ class ConversationEngine:
             sys_start = self.MEDIA_TIME + asr_time + llm_time + tts_time
 
             self.CURRENT_TURN = {
-                "turn": self.TURN_IDX + 1,
-                "user_end": round(self.MEDIA_TIME, 2),
-                "asr_time": round(asr_time, 2),
-                "llm_time": round(llm_time, 2),
-                "tts_time": round(tts_time, 2),
-                "tts_dur": round(tts_dur, 2),
-                "sys_start": round(sys_start, 2),
+                "turn": turn_id,
+                "user_end": round(self.MEDIA_TIME, 3),
+                "asr_time": round(asr_time, 3),
+                "llm_time": round(llm_time, 3),
+                "tts_time": round(tts_time, 3),
+                "tts_dur": round(tts_dur, 3),
+                "sys_start": round(sys_start, 3),
                 "tts_file": Path(tts_file).name
             }
-
+            self.write_turn()
+            self.TURN_IDX += 1
             self.STATE = "SPEAK"
             self.IN_SPEECH = False
             self.BUFFER.clear()
@@ -106,7 +111,8 @@ class ConversationEngine:
 
         # --- 特殊入口：来自短打断 ---
         if self.BUFFER and not self.IN_SPEECH:
-            self.process_user_segment(self.BUFFER)
+            buf = self.BUFFER[:-1] #短打断后传入listen状态时多了一帧
+            self.process_user_segment(buf)
             return
 
         # --- 1. 用户开始说话 ---
@@ -200,6 +206,7 @@ class ConversationEngine:
         # 收尾：最后一轮未写入时写入
         if self.CURRENT_TURN is not None:
             self.write_turn()
+        self.vad_iterator.reset_states()
 
     # -------------------------------------------------------
     def write_turn(self):
@@ -209,6 +216,36 @@ class ConversationEngine:
             f.write(json.dumps(self.CURRENT_TURN, ensure_ascii=False) + "\n")
         self.CURRENT_TURN = None
 
+
+def process_folder(folder, save_root):
+    jsonl = folder / f"{folder.name}_r.jsonl"
+    if not jsonl.exists():
+        return
+    data = [json.loads(l) for l in open(jsonl) if l.strip()]
+    data.sort(key=lambda x: x["sys_start"])
+    segs, cur_len, sr = [], 0, 16000
+    for s in data:
+        wav, sr = sf.read(folder / s["tts_file"])
+        if wav.ndim > 1:
+            wav = wav[:, 0]
+        pad = int(max(0.0, s["sys_start"] - cur_len) * sr)
+        if pad > 0:
+            segs.append(np.zeros(pad, dtype=wav.dtype))
+            cur_len += pad / sr
+        cut = None
+        if "interrupt_time" in s and s["sys_start"] + s["tts_dur"] > s["interrupt_time"]:
+            cut = int(max(0.0, s["interrupt_time"] - s["sys_start"]) * sr)
+        if cut is not None:
+            wav = wav[:cut]
+        segs.append(wav)
+        cur_len += len(wav) / sr
+    if segs:
+        save_root.mkdir(parents=True, exist_ok=True)
+        out = save_root / f"{folder.name}_output.wav"
+        sf.write(out, np.concatenate(segs), sr)
+        print(out)
+
+
 def main():
     exp_name = "exp1"
     data_lang = "dev_zh"
@@ -217,20 +254,31 @@ def main():
 
     data_root = Path("exp") / exp_name / "dev" / data_lang
     output_root = Path("exp") / exp_name / "medium" / out_lang
+
+    engine = ConversationEngine()
+
     for category in category_dev:
-        wav_path = data_root / category
-        medium_path = output_root / category
-        medium_path.mkdir(parents=True, exist_ok=True)
+        wav_path = data_root / category         # 原始数据区
+        out_path = output_root / category       # 生成区
+        out_path.mkdir(parents=True, exist_ok=True)
+
         wav_files = get_wav(wav_path)
-        for wav in tqdm(wav_files, desc=category):
+
+        for wav in tqdm(wav_files, desc=f"Processing {category}"):
             wav_file = wav_path / wav
-            output_dir = medium_path / wav_file.stem
+            output_dir = out_path / wav_file.stem
             output_dir.mkdir(parents=True, exist_ok=True)
-            stream_vad_asr_pipeline(wav_file, output_dir)
-            wav_files_in_dir = list(output_dir.glob("*.wav"))
-            json_files_in_dir = list(output_dir.glob("*.jsonl"))
-            if not (len(wav_files_in_dir) == 4 and len(json_files_in_dir) == 1):
-                raise RuntimeError(f"输出数量错误: {output_dir} 中找到 {len(wav_files_in_dir)} 个wav, {len(json_files_in_dir)} 个json")
+
+            engine.run(wav_file, output_dir)
+
+            jsonl_path = output_dir / f"{wav_file.stem}_r.jsonl"
+            if not jsonl_path.exists():
+                raise RuntimeError(f"未生成结果文件: {jsonl_path}")
+
+            lines = [l.strip() for l in open(jsonl_path, "r", encoding="utf-8") if l.strip()]
+            print(f"{wav_file.name} 完成, 共 {len(lines)} 轮对话")
+
+            # 输出结果写回原始数据目录（你的评测区）
             process_folder(output_dir, wav_path)
 
 if __name__ == "__main__":
