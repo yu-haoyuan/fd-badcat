@@ -2,7 +2,7 @@ import os, wave, json, time, torch, soundfile as sf, numpy as np
 from pathlib import Path
 from tqdm import tqdm
 from silero_vad import load_silero_vad, VADIterator
-from module import asr, llm_qwen3o, tts, get_wav
+from module import asr, llm_qwen3o, tts, get_wav, api_qwen3o
 class ConversationEngine:
     """
     Full-duplex Conversation Engine
@@ -64,16 +64,23 @@ class ConversationEngine:
         """对一段完整的用户语音执行 ASR→LLM→TTS 并写入结果"""
         basename = self.output_dir.name
         turn_id = self.TURN_IDX
-         # ========== ASR ==========
-        asr_start = time.perf_counter()
-        asr_text = asr(audio_buf)
-        asr_time = time.perf_counter() - asr_start
-        # ========== LLM ==========
-        llm_start = time.perf_counter()
-        decision = llm(asr_text)  # {"is_finished": bool, "reply": "..."}
-        llm_time = time.perf_counter() - llm_start
+        #  # ========== ASR ==========
+        # asr_start = time.perf_counter()
+        # asr_text = asr(audio_buf)
+        # asr_time = time.perf_counter() - asr_start
+        # # ========== LLM ==========
+        # llm_start = time.perf_counter()
+        # decision = llm(asr_text)  # {"is_finished": bool, "reply": "..."}
+        # llm_time = time.perf_counter() - llm_start
+        listen_prompt = f"如果你认为这段话在口语上说完了,返回回答,如果没说完返回continte"
 
-        if decision.get("is_finished", True):
+        # ========== api ==========
+        api_start = time.perf_counter()
+        # 拼接音频帧
+        user_audio = np.concatenate(audio_buf) if isinstance(audio_buf, list) else audio_buf
+        decision = api_qwen3o(listen_prompt, user_audio)
+        api_time = time.perf_counter() - api_start        
+        if "continte" not in decision.lower():
             #========== TTS ==========
             tts_path = self.output_dir / f"{basename}_r{turn_id}.wav"
             tts_start = time.perf_counter()
@@ -82,13 +89,15 @@ class ConversationEngine:
 
             audio_data, sr = sf.read(tts_file)
             tts_dur = len(audio_data) / sr
-            sys_start = self.MEDIA_TIME + asr_time + llm_time + tts_time
+            # sys_start = self.MEDIA_TIME + asr_time + llm_time + tts_time
+            sys_start = self.MEDIA_TIME + api_time + tts_time
 
             self.CURRENT_TURN = {
                 "turn": turn_id,
                 "user_end": round(self.MEDIA_TIME, 3),
-                "asr_time": round(asr_time, 3),
-                "llm_time": round(llm_time, 3),
+                # "asr_time": round(asr_time, 3),
+                # "llm_time": round(llm_time, 3),
+                "api_time": round(api_time, 3),
                 "tts_time": round(tts_time, 3),
                 "tts_dur": round(tts_dur, 3),
                 "sys_start": round(sys_start, 3),
@@ -138,7 +147,7 @@ class ConversationEngine:
         - 短打断：<1.5s 且出现 end → ASR+LLM 判定；interrupt=True 才切 LISTEN
         - 长打断：≥1.5s，无需 end → 直接切 LISTEN
         """
-
+        speak_prompt = f"用户刚才打断了我的回答，请判断他是否真的想打断我，如果是请返回' interrupt ',否则返回' continue '"
         # 1) 首次检测到用户开口：开始累计打断缓冲
         if event and "start" in event and not self.IN_SPEECH:
             self.IN_SPEECH = True
@@ -155,10 +164,10 @@ class ConversationEngine:
             # 2.1 短打断：在达到 1.5s 之前出现了 end → 做一次语义判定
             if event and "end" in event and self.INTERRUPT_COUNT < self.INTERRUPT_LIMIT:
                 seg_audio = np.concatenate(self.interrupt_buf)
-                seg_text  = asr(seg_audio)
-                intent    = llm(seg_text)   # 期望 {"interrupt": bool}
+                # seg_text  = asr(seg_audio)
+                intent    = api_qwen3o(speak_prompt, seg_audio)   # 期望 {"interrupt": bool}
 
-                if intent.get("interrupt", False):
+                if "interrupt" in intent.lower():
                     # —— 真正打断：记录时间，写入本轮，切 LISTEN，并把这段语音交给下一轮
                     self.CURRENT_TURN.setdefault("speak", {})["interrupt_time"] = round(self.MEDIA_TIME, 2)
                     self.write_turn()
