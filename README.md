@@ -16,3 +16,7 @@ test_path是应对interrupt的,然后对接了evaluate的脚本,规范路径
 test_rej继续拓展脚本,希望能做到处理停顿问题和bc问题
 
 1101目前可以做到处理停顿问题和bc问题,还需要实现一个缓存记录历史对话,目前只有两轮暂不记录
+
+1101 测试
+创建一个 exp/exp1/dev/dev_zh/Follow-up Questions
+把Follow-up Questions复制粘贴到dev_zh即可
