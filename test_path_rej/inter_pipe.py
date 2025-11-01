@@ -27,6 +27,7 @@ class ConversationEngine:
         self.CURRENT_TURN = None    # 当前轮的 listen + speak 数据
         self.SILENCE_COUNTER = 0    # 静音计数器
         self.INTERRUPT_COUNT = 0    # 打断帧计数
+        self.FILE_NAME = None
 
         # ========== 路径与模型接口 ==========
         self.output_dir = None
@@ -72,19 +73,21 @@ class ConversationEngine:
         # llm_start = time.perf_counter()
         # decision = llm(asr_text)  # {"is_finished": bool, "reply": "..."}
         # llm_time = time.perf_counter() - llm_start
-        listen_prompt = f"如果你认为这段话在口语上说完了,返回回答,如果没说完返回continte"
+        listen_prompt = f"如果你认为这段话在口语上说完了,你要作为一个聊天助手,语义上返回对这句话的回复,如果没说完返回continte"
 
         # ========== api ==========
         api_start = time.perf_counter()
         # 拼接音频帧
         user_audio = np.concatenate(audio_buf) if isinstance(audio_buf, list) else audio_buf
         decision = api_qwen3o(listen_prompt, user_audio)
+        # print(f"决策结果: {decision}")
+        # exit(0)
         api_time = time.perf_counter() - api_start        
         if "continte" not in decision.lower():
             #========== TTS ==========
             tts_path = self.output_dir / f"{basename}_r{turn_id}.wav"
             tts_start = time.perf_counter()
-            tts_file = tts(decision.get("reply", ""))
+            tts_file = tts(decision, tts_path)
             tts_time = time.perf_counter() - tts_start
 
             audio_data, sr = sf.read(tts_file)
@@ -103,8 +106,9 @@ class ConversationEngine:
                 "sys_start": round(sys_start, 3),
                 "tts_file": Path(tts_file).name
             }
-            self.write_turn()
+            # self.write_turn()
             self.TURN_IDX += 1
+            # print(self.CURRENT_TURN)
             self.STATE = "SPEAK"
             self.IN_SPEECH = False
             self.BUFFER.clear()
@@ -201,7 +205,8 @@ class ConversationEngine:
         """主循环：逐帧执行"""
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
-
+        self.FILE_NAME = audio_path.stem
+        print(f"Processing file: {self.FILE_NAME}")
         for frame in self.stream_audio(audio_path):
             event = self.detect_vad_frame(frame)
             self.MEDIA_TIME = self.FRAME_IDX * self.FRAME_SEC
@@ -220,7 +225,7 @@ class ConversationEngine:
     # -------------------------------------------------------
     def write_turn(self):
         """将当前 turn 写入 JSONL"""
-        jsonl_path = self.output_dir / f"turns.jsonl"
+        jsonl_path = self.output_dir / f"{self.FILE_NAME}_r.jsonl"
         with open(jsonl_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(self.CURRENT_TURN, ensure_ascii=False) + "\n")
         self.CURRENT_TURN = None
@@ -289,6 +294,7 @@ def main():
 
             # 输出结果写回原始数据目录（你的评测区）
             process_folder(output_dir, wav_path)
+            exit(0)
 
 if __name__ == "__main__":
     main()

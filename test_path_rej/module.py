@@ -116,8 +116,10 @@ def llm_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000):
 
 
 def tts(text, path):
-    with wave.open(path, "wb") as f:
+    with wave.open(str(path), "wb") as f:
         VOICE.synthesize_wav(text, f)
+    return str(path)
+
 
 
 def get_wav(input_dir="/home/sds/data", mode="time"):
@@ -150,25 +152,37 @@ def get_wav(input_dir="/home/sds/data", mode="time"):
 
 def api_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000) -> str:
     """
-    调用 Qwen3-Omni 流式接口（OpenAI SDK 方式）。
-    支持文字 + 音频输入，与 HTTP 版参数一致。
+    ✅ DashScope / Qwen3-Omni 兼容模式输入
+    支持文字 + 音频（base64 dataURL 格式）输入
     """
-    client = openai.OpenAI(api_key="sk-553f353ca3d1436b9ec9a9c728e30958", 
-                           base_url="https://dashscope.aliyuncs.com/compatible-mode/v1")
+    client = openai.OpenAI(
+        api_key="sk-553f353ca3d1436b9ec9a9c728e30958",
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+    )
 
-    # --- 构造消息 ---
-    messages = [{"role": "system", "content": "你是一个语音客服,你要没有任何格式的在10个字左右回答用户"}]
+    messages = [{"role": "system", "content": "你是一个语音客服,请在10个字以内自然回答用户"}]
 
     if audio_array is not None:
         try:
+            # 将音频数组写入临时文件
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tmp:
                 sf.write(tmp.name, audio_array, sr)
                 tmp.seek(0)
                 audio_b64 = base64.b64encode(tmp.read()).decode("utf-8")
+
+            # 必须加上 "data:audio/wav;base64," 前缀
+            data_url = f"data:audio/wav;base64,{audio_b64}"
+
             messages.append({
                 "role": "user",
                 "content": [
-                    {"type": "audio_url", "audio_url": {"url": f"data:audio/wav;base64,{audio_b64}"}} ,
+                    {
+                        "type": "input_audio",
+                        "input_audio": {
+                            "data": data_url,
+                            "format": "wav"
+                        }
+                    },
                     {"type": "text", "text": prompt}
                 ]
             })
@@ -176,16 +190,20 @@ def api_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000) -> 
             print(f"[QWEN AUDIO ENCODE ERROR] {e}")
             return ""
     else:
-        messages.append({"role": "user", "content": [{"type": "text", "text": prompt}]})
+        messages.append({
+            "role": "user",
+            "content": [{"type": "text", "text": prompt}]
+        })
 
-    # --- 发起流式请求 ---
+    # === 发起流式请求 ===
     completion = client.chat.completions.create(
         model="qwen3-omni-flash",
         messages=messages,
-        modalities=["text"],
+        modalities=["text"],        # 这里只要返回文字即可
         audio={"voice": "Cherry", "format": "wav"},
         stream=True,
         stream_options={"include_usage": True},
+        extra_body={"enable_thinking": False},  # 禁用思考模式，防止音频无响应
     )
 
     text_output = ""
@@ -199,8 +217,6 @@ def api_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000) -> 
         print(f"[QWEN STREAM ERROR] {e}")
 
     return text_output.strip()
-
-
 
 def main():
     base_dir = Path("test_wav")
