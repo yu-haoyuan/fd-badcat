@@ -5,7 +5,7 @@ import time
 from collections import Counter
 from typing import Dict, Any, Union, List, Tuple
 from openai import OpenAI
-
+from pathlib import Path
 # 设置DeepSeek API
 DEEPSEEK_API_KEY = "sk-db0c5e50bdf7468c85d45b59c465c661"
 DEEPSEEK_BASE_URL = "https://api.deepseek.com"
@@ -98,7 +98,7 @@ def read_instruction(task):
     """
     Read instruction from file.
     """
-    file_path = f"/home/sds/fd-badcat/evaluation/instruction/{task}.txt" #指定prompt文件（behavior.txt）
+    file_path = f"evaluation/instruction/{task}.txt" #指定prompt文件（behavior.txt）
     with open(file_path, "r", encoding="utf-8") as f:
         instruction_text = f.read()
     return instruction_text
@@ -142,8 +142,8 @@ def eval_behavior_all(data_dir, client, task, output_dir):
     instruction = read_instruction(task)
     
     # 创建输出目录
-    os.makedirs(output_dir, exist_ok=True)
-    
+    os.makedirs(output_dir.parent, exist_ok=True)
+
     # 收集所有文件并按组分类
     file_groups = {}
     for file_name in os.listdir(data_dir):
@@ -201,12 +201,12 @@ def eval_behavior_all(data_dir, client, task, output_dir):
         output_list.append((prefix, result))
     
     # 保存所有结果到一个JSON文件
-    output_path = os.path.join(output_dir, "Follow-up_Questions_content_tags.json") #不同子任务的输出结果
+    output_path = os.path.join(output_dir, f"{output_dir.stem}_content_tags.jsonl") #不同子任务的输出结果
     with open(output_path, "w", encoding="utf-8") as f:
         for prefix, result in output_list:
             # 创建新的条目格式
             entry = {
-                "key": f"Follow-up_Questions_{prefix}", #不同子任务的key
+                "key": f"Follow-up Questions_{prefix}", #不同子任务的key
                 "behaviour": result.get("behaviour", [])
             }
             # 写入一行JSON
@@ -242,11 +242,13 @@ if __name__ == "__main__":
         description="Run DeepSeek behavior evaluation on a dataset directory."
     )
     parser.add_argument("--data_dir", type=str, required=True)
-    data_dir = parser.parse_args().data_dir
+    parser.add_argument("--output_dir", type=str, default="./dev/json_group")
+    args = parser.parse_args()
+    data_dir = Path(args.data_dir)
     # 设置参数
-    # data_dir = "./dev/Follow-up_Questions"  # 输入：存放wav音频数据的目录
+    # data_dir = "./dev/Follow-up Questions"  # 输入：存放wav音频数据的目录
     # data_dir = "/home/sds/output/merge/Follow-up Questions"
-    output_dir = "./dev/json_group"  # 输出：Follow-up_Questions_content_tags.json文件的保存目录
+    output_dir = Path(args.output_dir)  # 输出：Follow-up Questions_content_tags.json文件的保存目录
     task = "behavior"  # 任务名称，这里不用修改
     
     # 执行评估

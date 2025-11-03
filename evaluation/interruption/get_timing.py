@@ -18,8 +18,8 @@ SR = 16_000
 USER_MERGE_GAP = 0.6  
 MODEL_MERGE_GAP = 0.5  
 AUDIO_EXT = "wav"
-OUT_FILENAME = "Follow-up_Questions_latency_results.json" #不同子任务的输出文件
-result_dir = "./dev/json_group" #Follow-up_Questions_latency_results.json等文件的输出路径
+OUT_FILENAME = "Follow-up Questions_latency_results.json" #不同子任务的输出文件
+# result_dir = "./dev/json_group" #Follow-up_Questions_latency_results.json等文件的输出路径
 
 # ---------------- Silero‑VAD ---------------
 vad_module = importlib.import_module("silero_vad")
@@ -158,9 +158,17 @@ def main():
         description="Process audio files and calculate latency metrics"
     )
     ap.add_argument("--root_dir", default="./dev/Follow-up_Questions") #输入：存放wav音频数据的文件夹
+    ap.add_argument("--result_dir", default="./dev/json_group") #输出：存放结果json文件的文件夹
+    
     args = ap.parse_args()
 
+
     root_dir = Path(args.root_dir)
+    result_dir = Path(args.result_dir)
+    
+    OUT_FILENAME = f"{root_dir.stem}_latency_results.json"
+
+    
     all_results = []
     
     # Collect all user audio files
