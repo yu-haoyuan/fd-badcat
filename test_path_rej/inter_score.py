@@ -64,23 +64,59 @@ def main():
     json_lang = "cn" #"en"
     
     #Negation or Dissatisfaction
+    #---------------------------------------------
+    categories = ["Follow-up Questions",
+                  "Negation or Dissatisfaction",
+                  "Repetition Requests",
+                  "Silence or Termination",
+                  "Topic Switching",
 
-    categories = ["Negation or Dissatisfaction"]
+                  "Pause_Handling", 
+                  "Speech_Directe_at_Others", 
+                  "Third-party_Speech", 
+                  "User_Real-time_Backchannels"]
     for category in categories:
-        #inter delay score
-        time_file_dir = Path(f"exp/{exp}/dev/{lang}/{category}")
-        time_out_dir = Path(f"exp/{exp}/score/{category}")
-        run_get_timing(time_file_dir, time_out_dir)
+    #----------reject-----------------------------------
+        if category == "Pause_Handling":
+            #rej transcript
+            trans_dir_rej = Path(f"exp/{exp}/dev/{lang}/{category}")
+            run_get_trans(trans_dir_rej, json_lang)
 
-        #inter transcript
-        trans_dir = Path(f"exp/{exp}/dev/{lang}/{category}")
-        run_get_trans(trans_dir, json_lang)
+            
+        if category == "Speech_Directe_at_Others":
+            #rej transcript
 
-        #inter eval score
-        run_get_eval(trans_dir, time_out_dir)
+        if category == "Third-party_Speech":
+            #rej transcript
+            trans_dir_rej = Path(f"exp/{exp}/dev/{lang}/{category}")
+            run_get_trans(trans_dir_rej, json_lang)
+
+
+
+        if category == "User_Real-time_Backchannels":
+            #rej transcript
+            trans_dir_rej = Path(f"exp/{exp}/dev/{lang}/{category}")
+            run_get_trans(trans_dir_rej, json_lang)
+
+        else:    
+    #----------interrupt-----------------------------------
+            #inter delay score
+            time_file_dir = Path(f"exp/{exp}/dev/{lang}/{category}")
+            time_out_dir = Path(f"exp/{exp}/score/{category}")
+            run_get_timing(time_file_dir, time_out_dir)
+
+            #inter transcript
+            trans_dir_int = Path(f"exp/{exp}/dev/{lang}/{category}")
+            run_get_trans(trans_dir_int, json_lang)
+
+            #inter eval score
+            run_get_eval(trans_dir_int, time_out_dir)
+            
+            #first time delay
+            run_get_ftd(trans_dir_int, time_out_dir)
         
-        #first time delay
-        run_get_ftd(trans_dir, time_out_dir)
+
+
 
 if __name__ == "__main__":
     main()
