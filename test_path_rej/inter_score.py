@@ -27,7 +27,6 @@ def run_get_trans(get_trans_dir: Path, lang: str):
 def run_get_eval(get_eval_dir: Path, eval_output_dir: Path):
     '''
     输入4个json
-    输出./dev/json_group,由于这里会时刻刷新,暂时不分实验部署,而是从这里获取保存在exp_n下面
     '''
     cmd = [
         sys.executable,  # 使用当前环境的 python
@@ -57,6 +56,31 @@ def run_get_ftd(get_ftd_dir: Path, save_dir: Path):
         json.dump(result, f, ensure_ascii=False, indent=2)
     print(f"First time delay: {result}")
 
+#-----------------reject-----------------------
+def run_get_ph_rr(get_eval_dir: Path, eval_output_dir: Path):
+    '''
+    返回reject_rate到score/reject_rate.json
+    输入一个包含 *_sentence.json 和 *_output.json 的目录
+    输出一个 json 文件 reject_rate.json 到指定 output_dir
+    '''
+    import subprocess, sys
+    cmd = [
+        sys.executable,
+        "evaluation/rejection/Pause_Handling/compute_rejection_rate.py",
+        "--data_dir", str(get_eval_dir),
+        "--output_dir", str(eval_output_dir)
+    ]
+    subprocess.run(cmd, check=True)
+
+def run_get_tpsb_rr(get_eval_dir: Path, eval_output_dir: Path):
+    import subprocess, sys
+    cmd = [
+        sys.executable,
+        "evaluation/rejection/Third-party_Speech/Third-party_Speech_before/compute_rejection_rate_before.py",
+        "--data_dir", str(get_eval_dir),
+        "--output_dir", str(eval_output_dir)
+    ]
+
 def main():
     exp = "exp1"
     #语言
@@ -75,28 +99,60 @@ def main():
                   "Speech_Directe_at_Others", 
                   "Third-party_Speech", 
                   "User_Real-time_Backchannels"]
+    
+
     for category in categories:
     #----------reject-----------------------------------
         if category == "Pause_Handling":
+            trans_dir_rej_ph = Path(f"exp/{exp}/dev/{lang}/{category}")
+            rej_ph_rr_dir = Path(f"exp/{exp}/score/{category}")
+            #原地产生json计算拒绝率
+            run_get_trans(trans_dir_rej_ph, json_lang)
+            run_get_ph_rr(trans_dir_rej_ph, rej_ph_rr_dir)
+            #计算ftd
+            run_get_ftd(trans_dir_rej_ph, rej_ph_rr_dir)
+
+
+        if category == "Third-party_Speech_before":
+            trans_dir_rej_tpsb = Path(f"exp/{exp}/dev/{lang}/{category}")
+            rej_tpsb_rr_dir = Path(f"exp/{exp}/score/{category}")
             #rej transcript
-            trans_dir_rej = Path(f"exp/{exp}/dev/{lang}/{category}")
-            run_get_trans(trans_dir_rej, json_lang)
+            run_get_trans(trans_dir_rej_tpsb, json_lang)
+            run_get_tpsb_rr(trans_dir_rej_tpsb, rej_tpsb_rr_dir)
+            #计算ftd
+            run_get_ftd(trans_dir_rej_tpsb, rej_tpsb_rr_dir)
+
 
             
         if category == "Speech_Directe_at_Others":
+            trans_dir_rej_sdao = Path(f"exp/{exp}/dev/{lang}/{category}")
+            rej_sdao_rr_dir = Path(f"exp/{exp}/score/{category}")
             #rej transcript
+            run_get_trans(trans_dir_rej_sdao, json_lang)
+            run_get_eval(trans_dir_rej_sdao, rej_sdao_rr_dir)
+            #计算ftd
+            run_get_ftd(trans_dir_rej_sdao, rej_sdao_rr_dir)
 
-        if category == "Third-party_Speech":
+
+        if category == "Third-party_Speech_after":
+            trans_dir_rej_tpsa = Path(f"exp/{exp}/dev/{lang}/{category}")
+            rej_tpsa_rr_dir = Path(f"exp/{exp}/score/{category}")
             #rej transcript
-            trans_dir_rej = Path(f"exp/{exp}/dev/{lang}/{category}")
-            run_get_trans(trans_dir_rej, json_lang)
-
-
+            run_get_trans(trans_dir_rej_tpsa, json_lang)
+            run_get_eval(trans_dir_rej_tpsa, rej_tpsa_rr_dir)
+            #计算ftd
+            run_get_ftd(trans_dir_rej_tpsa, rej_tpsa_rr_dir)
+            
 
         if category == "User_Real-time_Backchannels":
-            #rej transcript
-            trans_dir_rej = Path(f"exp/{exp}/dev/{lang}/{category}")
-            run_get_trans(trans_dir_rej, json_lang)
+            trans_dir_rej_bc = Path(f"exp/{exp}/dev/{lang}/{category}")
+            rej_bc_rr_dir = Path(f"exp/{exp}/score/{category}")
+            #原地产生json 计算转录评分
+            run_get_trans(trans_dir_rej_bc, json_lang)
+            run_get_eval(trans_dir_rej_bc, rej_bc_rr_dir)
+
+            #计算ftd
+            run_get_ftd(trans_dir_rej_bc, rej_bc_rr_dir)
 
         else:    
     #----------interrupt-----------------------------------
@@ -110,10 +166,10 @@ def main():
             run_get_trans(trans_dir_int, json_lang)
 
             #inter eval score
-            run_get_eval(trans_dir_int, time_out_dir)
+            run_get_eval(trans_dir_int, time_out_dir) #转录目录, 评分输出目录
             
             #first time delay
-            run_get_ftd(trans_dir_int, time_out_dir)
+            run_get_ftd(trans_dir_int, time_out_dir) #转录目录, 评分输出目录
         
 
 

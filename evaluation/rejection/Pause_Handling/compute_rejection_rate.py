@@ -44,8 +44,30 @@ def process_folder(folder_path):
         print(f"\n拒识率: {ratio:.3%} ({ahead_count}/{total_count})")
     else:
         print("没有有效结果。")
+    summary = {
+        "total": total_count,
+        "ahead": ahead_count,
+        "ratio": ratio,
+    }
+    return summary
 
+import argparse
+from pathlib import Path
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--data_dir", type=str, required=True, help="输入文件夹路径，包含 *_sentence.json 和 *_output.json")
+    parser.add_argument("--output_dir", type=str, required=True, help="输出结果 JSON 保存路径目录")
+    args = parser.parse_args()
+
+    data_dir = Path(args.data_dir)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    summary = process_folder(data_dir)
+    output_file = output_dir / "reject_rate.json"
+
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(summary, f, ensure_ascii=False, indent=2)
 
 if __name__ == "__main__":
-    folder = "./dev/Pause_Handling" # 修改为你的存放wav的文件夹路径
-    process_folder(folder)
+    main()

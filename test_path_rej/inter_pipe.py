@@ -310,6 +310,16 @@ def main():
     data_root = Path("exp") / exp_name / "dev" / data_lang
     output_root = Path("exp") / exp_name / "medium" / out_lang
 
+    if output_root.exists():
+        print(f"⚠️ 清空输出目录: {output_root}")
+        for item in output_root.iterdir():
+            if item.is_file():
+                item.unlink()
+            elif item.is_dir():
+                shutil.rmtree(item)
+    else:
+        output_root.mkdir(parents=True, exist_ok=True)
+        
     engine = ConversationEngine()
 
     for category in category_dev:
