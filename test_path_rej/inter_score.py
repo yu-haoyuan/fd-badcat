@@ -59,9 +59,13 @@ def run_get_ftd(get_ftd_dir: Path, save_dir: Path):
 
 def main():
     exp = "exp1"
-    lang = "dev_zh"
+    #语言
+    lang = "dev_zh" #dev_en
     json_lang = "cn" #"en"
-    categories = ["Follow-up Questions"]
+    
+    #Negation or Dissatisfaction
+
+    categories = ["Negation or Dissatisfaction"]
     for category in categories:
         #inter delay score
         time_file_dir = Path(f"exp/{exp}/dev/{lang}/{category}")

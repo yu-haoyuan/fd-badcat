@@ -34,6 +34,15 @@ class ConversationEngine:
         self.vad_model = load_silero_vad()
         self.vad_iterator = VADIterator(self.vad_model, sampling_rate=self.SAMPLE_RATE)
 
+
+    def reset(self):
+        self.STATE = "LISTEN"
+        self.TURN_IDX = 0
+        self.MEDIA_TIME = 0.0
+        self.FRAME_IDX = 0
+        self.CURRENT_TURN = None
+        self.BUFFER.clear()
+
     # -------------------------------------------------------
     def stream_audio(self, audio_path):
         """逐帧读取音频流（16ms一帧）"""
@@ -79,7 +88,7 @@ class ConversationEngine:
         api_start = time.perf_counter()
         # 拼接音频帧
         user_audio = np.concatenate(audio_buf) if isinstance(audio_buf, list) else audio_buf
-        decision = api_qwen3o(listen_prompt, user_audio)
+        decision = llm_qwen3o(listen_prompt, user_audio)
         # print(f"决策结果: {decision}")
         # exit(0)
         api_time = time.perf_counter() - api_start        
@@ -169,7 +178,7 @@ class ConversationEngine:
             if event and "end" in event and self.INTERRUPT_COUNT < self.INTERRUPT_LIMIT:
                 seg_audio = np.concatenate(self.interrupt_buf)
                 # seg_text  = asr(seg_audio)
-                intent    = api_qwen3o(speak_prompt, seg_audio)   # 期望 {"interrupt": bool}
+                intent    = llm_qwen3o(speak_prompt, seg_audio)   # 期望 {"interrupt": bool}
 
                 if "interrupt" in intent.lower():
                     # —— 真正打断：记录时间，写入本轮，切 LISTEN，并把这段语音交给下一轮
@@ -231,12 +240,41 @@ class ConversationEngine:
         self.CURRENT_TURN = None
 
 
+import shutil
+import json
+import numpy as np
+import soundfile as sf
+
 def process_folder(folder, save_root):
+    """
+    处理单个对话文件夹：
+    - 如果文件夹以 clean_ 开头：直接把 *_r1.wav 改名为 *_output.wav 复制到 save_root。
+    - 否则按 JSONL 拼接多个 TTS wav 生成 output.wav。
+    """
+    # --- 情况 1：以 clean_ 开头，直接复制 ---
+    if folder.name.lower().startswith("clean_"):
+        # 找出 _r1.wav 文件
+        r1_files = list(folder.glob("*_r0.wav"))
+        if not r1_files:
+            print(f"未找到 {folder} 下的 *_r0.wav 文件")
+            return
+        
+        src = r1_files[0]
+        dst = save_root / f"{folder.name}_output.wav"
+        save_root.mkdir(parents=True, exist_ok=True)
+        shutil.copy(src, dst)
+        print(f"复制clean音频: {src.name} → {dst.name}")
+        return
+
+    # --- 情况 2：普通文件夹，按 JSONL 拼接 ---
     jsonl = folder / f"{folder.name}_r.jsonl"
     if not jsonl.exists():
+        print(f"JSONL 不存在: {jsonl}")
         return
-    data = [json.loads(l) for l in open(jsonl) if l.strip()]
+
+    data = [json.loads(l) for l in open(jsonl, encoding="utf-8") if l.strip()]
     data.sort(key=lambda x: x["sys_start"])
+
     segs, cur_len, sr = [], 0, 16000
     for s in data:
         wav, sr = sf.read(folder / s["tts_file"])
@@ -246,25 +284,28 @@ def process_folder(folder, save_root):
         if pad > 0:
             segs.append(np.zeros(pad, dtype=wav.dtype))
             cur_len += pad / sr
+
         cut = None
         if "interrupt_time" in s and s["sys_start"] + s["tts_dur"] > s["interrupt_time"]:
             cut = int(max(0.0, s["interrupt_time"] - s["sys_start"]) * sr)
         if cut is not None:
             wav = wav[:cut]
+
         segs.append(wav)
         cur_len += len(wav) / sr
+
     if segs:
         save_root.mkdir(parents=True, exist_ok=True)
         out = save_root / f"{folder.name}_output.wav"
         sf.write(out, np.concatenate(segs), sr)
-        print(out)
+        print(f"拼接生成: {out}")
 
 
 def main():
     exp_name = "exp1"
     data_lang = "dev_zh"
     out_lang = "medium_zh"
-    category_dev = ["Follow-up Questions"]
+    category_dev = ["Negation or Dissatisfaction"]
 
     data_root = Path("exp") / exp_name / "dev" / data_lang
     output_root = Path("exp") / exp_name / "medium" / out_lang
@@ -276,13 +317,14 @@ def main():
         out_path = output_root / category       # 生成区
         out_path.mkdir(parents=True, exist_ok=True)
 
-        wav_files = get_wav(wav_path)
+        wav_files = get_wav(wav_path, "all")
 
         for wav in tqdm(wav_files, desc=f"Processing {category}"):
             wav_file = wav_path / wav
             output_dir = out_path / wav_file.stem
             output_dir.mkdir(parents=True, exist_ok=True)
-
+            
+            engine.reset()      
             engine.run(wav_file, output_dir)
 
             jsonl_path = output_dir / f"{wav_file.stem}_r.jsonl"
@@ -294,7 +336,6 @@ def main():
 
             # 输出结果写回原始数据目录（你的评测区）
             process_folder(output_dir, wav_path)
-            exit(0)
 
 if __name__ == "__main__":
     main()

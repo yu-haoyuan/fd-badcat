@@ -96,6 +96,7 @@ def llm_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000):
         "presence_penalty": 1.2,
         "frequency_penalty": 0.8,
         "max_tokens": 256,
+        "seed": 42,
         "messages": messages
     }
 
@@ -127,8 +128,10 @@ def get_wav(input_dir="/home/sds/data", mode="time"):
     根据模式返回指定目录下的 wav 文件列表。
     参数:
         input_dir (str): 音频所在目录。
-        mode (str): 'time' 表示处理带打断音频（排除 clean_）
-                    'clean' 表示处理干净音频（只取 clean_ 开头）。
+        mode (str):
+            - 'time'  表示处理带打断音频（排除 clean_ 开头）
+            - 'clean' 表示处理干净音频（只取 clean_ 开头）
+            - 'all'   表示读取所有不以 'output.wav' 结尾的音频文件
 
     返回:
         list[str]: 符合条件的 wav 文件名列表。
@@ -137,13 +140,22 @@ def get_wav(input_dir="/home/sds/data", mode="time"):
     for f in os.listdir(input_dir):
         if not f.endswith(".wav"):
             continue
+
+        # --- 模式1：time（排除clean_）
         if mode == "time":
             if f.lower().startswith("clean"):
                 continue
-            if re.match(r"^\d", f):
+            if re.match(r"^\d", f):  # 例如 0001_0002.wav
                 wav_files.append(f)
+
+        # --- 模式2：clean（只取clean_）
         elif mode == "clean":
             if f.lower().startswith("clean_"):
+                wav_files.append(f)
+
+        # --- 模式3：all（排除output.wav）
+        elif mode == "all":
+            if not f.lower().endswith("output.wav"):
                 wav_files.append(f)
 
     wav_files.sort()

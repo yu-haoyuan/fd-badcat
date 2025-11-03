@@ -114,11 +114,14 @@ def run_build_category_all(exp: str, categories: list, cat2group: dict):
 def main():
         # 你的 categories
     exp = "exp1"
-    categories = ["Follow-up Questions"]
+
+    #
+    categories = ["Negation or Dissatisfaction"]
 
     # 你手动决定每个 category 属于 interrupt 还是 reject
     cat2group = {
-        "Follow-up Questions": "interrupt",
+        # "Follow-up Questions": "interrupt",
+        "Negation or Dissatisfaction": "interrupt",
         # 例如将来还有别的：
         # "Refusal Cases": "reject",
     }
