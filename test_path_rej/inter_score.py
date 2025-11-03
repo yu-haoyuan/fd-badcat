@@ -81,6 +81,16 @@ def run_get_tpsb_rr(get_eval_dir: Path, eval_output_dir: Path):
         "--output_dir", str(eval_output_dir)
     ]
 
+def run_get_sdao_eval(get_eval_dir: Path, eval_output_dir: Path):
+    import subprocess, sys
+    cmd = [
+        sys.executable,
+        "evaluation/rejection/Speech_Directe_at_Others/second_step/prepare_for_eval_first.py",
+        "--data_dir", str(get_eval_dir),
+        "--output_dir", str(eval_output_dir)
+    ]
+    subprocess.run(cmd, check=True)
+
 def main():
     exp = "exp1"
     #语言
@@ -126,10 +136,14 @@ def main():
             
         if category == "Speech_Directe_at_Others":
             trans_dir_rej_sdao = Path(f"exp/{exp}/dev/{lang}/{category}")
+            trans_dir_rej_sdao_eval = Path(f"exp/{exp}/dev/{lang}/{category}_eval")
+
             rej_sdao_rr_dir = Path(f"exp/{exp}/score/{category}")
             #rej transcript
             run_get_trans(trans_dir_rej_sdao, json_lang)
-            run_get_eval(trans_dir_rej_sdao, rej_sdao_rr_dir)
+            #在eval之前多了一步处理
+            run_get_sdao_eval(trans_dir_rej_sdao, trans_dir_rej_sdao_eval)
+            run_get_eval(rej_sdao_rr_dir, rej_sdao_rr_dir)
             #计算ftd
             run_get_ftd(trans_dir_rej_sdao, rej_sdao_rr_dir)
 

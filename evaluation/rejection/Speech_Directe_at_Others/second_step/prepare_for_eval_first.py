@@ -62,6 +62,12 @@ def process_audio_folder(input_dir: Path, output_dir: Path):
         print(f"✅ 处理完成: {base_name}")
 
 if __name__ == "__main__":
-    input_dir = Path("./dev/Speech_Directe_at_Others")
-    output_dir = Path("./dev/Speech_Directe_at_Others_for_eval")
+    import argparse
+    parser = argparse.ArgumentParser(description="批量处理音频文件夹")
+    parser.add_argument("--input_dir", type=str, required=True, help="输入文件夹路径")
+    parser.add_argument("--output_dir", type=str, required=True, help="输出文件夹路径")
+    args = parser.parse_args()
+
+    input_dir = Path(args.input_dir)
+    output_dir = Path(args.output_dir)
     process_audio_folder(input_dir, output_dir)
