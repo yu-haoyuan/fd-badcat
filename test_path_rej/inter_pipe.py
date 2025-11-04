@@ -102,7 +102,7 @@ class ConversationEngine:
             role = "用户" if turn["role"] == "user" else "助手"
             history_text += f"{role}:{turn['content']}\n"
         listen_prompt = f'''
-            首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'，然后给出这段音频的asr转录,如果你认为用户明显说完：
+            首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'。然后给出这段音频的asr转录,如果你认为用户明显说完：
             你是一个自然聊天的语音助手，要像朋友一样回答用户的问题。
             不要反问，也不要解释，不要输出任何格式说明。
             如果用户问到的内容需要你编造，比如不知道答案，也要自然地编造一个合理的回答。
@@ -132,7 +132,8 @@ class ConversationEngine:
         print(f"决策结果: {decision}")
         # exit(0)
         api_time = time.perf_counter() - api_start        
-        if "continte" not in decision.lower():
+        if ("continue" not in decision.lower()) and ("继续" not in decision.lower()):
+
             #========== TTS ==========
             tts_path = self.output_dir / f"{basename}_r{turn_id}.wav"
             tts_start = time.perf_counter()
