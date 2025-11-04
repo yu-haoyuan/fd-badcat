@@ -102,7 +102,6 @@ class ConversationEngine:
             role = "用户" if turn["role"] == "user" else "助手"
             history_text += f"{role}:{turn['content']}\n"
         listen_prompt = f'''
-            首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'。然后给出这段音频的asr转录,如果你认为用户明显说完：
             你是一个自然聊天的语音助手，要像朋友一样回答用户的问题。
             不要反问，也不要解释，不要输出任何格式说明。
             如果用户问到的内容需要你编造，比如不知道答案，也要自然地编造一个合理的回答。
@@ -198,9 +197,24 @@ class ConversationEngine:
                 # 达到 640 ms（END_HOLD_FRAMES）后，确认结束
                 if self.SILENCE_COUNTER >= self.END_HOLD_FRAMES:
                     self.SILENCE_COUNTER = 0
+
+                    # === 新增阶段一判断 ===
+                    user_audio = np.concatenate(self.BUFFER)
+                    judge_prompt = (
+                        "你需要从日常对话的角度,而不是语法的角度去判断这句话是否说完了。"
+                        "首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'。"
+                        "如果你认为用户已经说完，请只输出字符串'end'。不要输出其他内容。"
+                    )
+                    judge_result = llm_qwen3o(judge_prompt, user_audio).strip().lower()
+                    print(f"用户语音完整性判定: {judge_result}")
+                    if "continue" in judge_result:
+                        print("🔁 用户未说完，继续累积帧")
+                        self.IN_SPEECH = True
+                        return
+
+                    # === 说完了，进入完整流程 ===
                     self.process_user_segment(self.BUFFER)
                     return
-
     def handle_speak(self, frame, event):
         """SPEAK 状态：检测短打断或长打断"""
         if event and "start" in event and not self.IN_SPEECH:
