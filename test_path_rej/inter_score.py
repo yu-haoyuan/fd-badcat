@@ -99,21 +99,23 @@ def main():
     
     #Negation or Dissatisfaction
     #---------------------------------------------
-    categories = ["Follow-up Questions",
-                  "Negation or Dissatisfaction",
-                  "Repetition Requests",
-                  "Silence or Termination",
-                  "Topic Switching",
+    # categories = ["Follow-up Questions",
+    #               "Negation or Dissatisfaction",
+    #               "Repetition Requests",
+    #               "Silence or Termination",
+    #               "Topic Switching",
 
-                  "Pause_Handling", 
-                  "Speech_Directe_at_Others", 
-                  "Third-party_Speech", 
-                  "User_Real-time_Backchannels"]
+    #               "Pause_Handling", 
+    #               "Speech_Directe_at_Others", 
+    #               "Third-party_Speech", 
+    #               "User_Real-time_Backchannels"]
+    categories = ["Pause Handling"]
     
 
     for category in categories:
     #----------reject-----------------------------------
-        if category == "Pause_Handling":
+        if category == "Pause Handling":
+            print(f"计算{category}")
             trans_dir_rej_ph = Path(f"exp/{exp}/dev/{lang}/{category}")
             rej_ph_rr_dir = Path(f"exp/{exp}/score/{category}")
             #原地产生json计算拒绝率
@@ -123,7 +125,7 @@ def main():
             run_get_ftd(trans_dir_rej_ph, rej_ph_rr_dir)
 
 
-        if category == "Third-party_Speech_before":
+        if category == "Third-party Speech_before":
             trans_dir_rej_tpsb = Path(f"exp/{exp}/dev/{lang}/{category}")
             rej_tpsb_rr_dir = Path(f"exp/{exp}/score/{category}")
             #rej transcript
@@ -134,7 +136,7 @@ def main():
 
 
             
-        if category == "Speech_Directe_at_Others":
+        if category == "Speech_Directe at Others":
             trans_dir_rej_sdao = Path(f"exp/{exp}/dev/{lang}/{category}")
             trans_dir_rej_sdao_eval = Path(f"exp/{exp}/dev/{lang}/{category}_eval")
 
@@ -148,7 +150,7 @@ def main():
             run_get_ftd(trans_dir_rej_sdao, rej_sdao_rr_dir)
 
 
-        if category == "Third-party_Speech_after":
+        if category == "Third-party Speech after":
             trans_dir_rej_tpsa = Path(f"exp/{exp}/dev/{lang}/{category}")
             rej_tpsa_rr_dir = Path(f"exp/{exp}/score/{category}")
             #rej transcript
@@ -158,7 +160,7 @@ def main():
             run_get_ftd(trans_dir_rej_tpsa, rej_tpsa_rr_dir)
             
 
-        if category == "User_Real-time_Backchannels":
+        if category == "User Real-time Backchannels":
             trans_dir_rej_bc = Path(f"exp/{exp}/dev/{lang}/{category}")
             rej_bc_rr_dir = Path(f"exp/{exp}/score/{category}")
             #原地产生json 计算转录评分

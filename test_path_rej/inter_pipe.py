@@ -34,6 +34,8 @@ class ConversationEngine:
         self.SILENCE_COUNTER = 0
         #打断后处理
         self.FROM_INTERRUPT = False
+        #历史上下文
+        self.history = []
 
 
         # ========== 路径与模型接口 ==========
@@ -49,6 +51,7 @@ class ConversationEngine:
         self.FRAME_IDX = 0
         self.CURRENT_TURN = None
         self.BUFFER.clear()
+        self.history.clear()
 
     # -------------------------------------------------------
     def stream_audio(self, audio_path):
@@ -94,8 +97,12 @@ class ConversationEngine:
         api_start = time.perf_counter()
         # 拼接音频帧
         user_audio = np.concatenate(audio_buf) if isinstance(audio_buf, list) else audio_buf
-        
+        history_text = ""
+        for turn in self.history[-3:]:  # 保留最近5轮，防止prompt太长
+            role = "用户" if turn["role"] == "user" else "助手"
+            history_text += f"{role}:{turn['content']}\n"
         listen_prompt = f'''
+            首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'，然后给出这段音频的asr转录,如果你认为用户明显说完：
             你是一个自然聊天的语音助手，要像朋友一样回答用户的问题。
             不要反问，也不要解释，不要输出任何格式说明。
             如果用户问到的内容需要你编造，比如不知道答案，也要自然地编造一个合理的回答。
@@ -104,9 +111,23 @@ class ConversationEngine:
             以下是一些示例：
             用户：我上次吃的那家火锅店叫什么来着？
             助手：老灶火锅呀。
+
+            以下是部分历史对话：
+            {history_text}
+
+            现在，请继续回应用户的最新语音：
         '''
         
         decision = llm_qwen3o(listen_prompt, user_audio)
+    
+
+        # ✅ 写入临时 wav 再喂给 asr
+        user_audio = np.concatenate(audio_buf) if isinstance(audio_buf, list) else audio_buf
+        tmp_path = self.output_dir / f"{self.FILE_NAME}_turn{self.TURN_IDX}_input.wav"
+        sf.write(tmp_path, user_audio, self.SAMPLE_RATE)
+        user_text = asr(str(tmp_path)) # if "asr" in globals() else "<user audio>"
+        self.history.append({"role": "user", "content": user_text})
+        self.history.append({"role": "assistant", "content": decision})
 
         print(f"决策结果: {decision}")
         # exit(0)
@@ -209,9 +230,24 @@ class ConversationEngine:
                         # ✅ 确认打断结束
                         seg_audio = np.concatenate(self.interrupt_buf)
                         speak_prompt = (
-                            "你现在处于SPEAK状态，用户刚才打断了你的回答，请判断他是否真的想打断你，"
-                            "如果是请返回'interrupt'，否则返回'continue'，"
-                            "你只能返回这两个单词。"
+                            "你现在处于 SPEAK 状态，用户刚才在你说话时发出了一段语音。"
+                            "请根据语义判断他是否真的想打断你。"
+                            "如果是明确的反驳、否定、提出问题、要求停止、要求更正等，返回 'interrupt'；"
+                            "如果只是附和、回应、赞同或鼓励（例如“好的”“知道了”“说得好”“嗯嗯”“行”），"
+                            "请返回 'continue'。"
+                            "你只能返回这两个单词之一。不要解释、不要输出其它内容。\n\n"
+
+                            "以下是一些示例：\n"
+                            "用户：知道了。\n助手：continue\n"
+                            "用户：好得很。\n助手：continue\n"
+                            "用户：你说得真棒。\n助手：continue\n"
+                            "用户：嗯嗯，对。\n助手：continue\n"
+                            "用户：我不同意你说的。\n助手：interrupt\n"
+                            "用户：不是这样的。\n助手：interrupt\n"
+                            "用户：你别说了。\n助手：interrupt\n"
+                            "用户：等一下。\n助手：interrupt\n\n"
+
+                            "现在请判断当前用户这段语音的类型，只返回 'interrupt' 或 'continue'："
                         )
                         intent = llm_qwen3o(speak_prompt, seg_audio)
                         print(f"出现了打断，打断意图判定: {intent}")
@@ -219,19 +255,28 @@ class ConversationEngine:
                         if "interrupt" in intent.lower():
                             self.CURRENT_TURN.setdefault("speak", {})["interrupt_time"] = round(self.MEDIA_TIME, 2)
                             self.write_turn()
-                            self.STATE = "LISTEN"
+                            # self.STATE = "LISTEN"
                             self.BUFFER = self.interrupt_buf.copy()
                             print("🔁 检测到短打断，启动新一轮 listen→speak")
                             self.process_user_segment(self.BUFFER)
 
-                        # 清理状态
-                        self.IN_SPEECH = False
-                        self.interrupt_buf.clear()
-                        self.INTERRUPT_COUNT = 0
-                        self.SILENCE_COUNTER = 0
-                        return
+                            # 清理状态
+                            self.IN_SPEECH = False
+                            self.interrupt_buf.clear()
+                            self.INTERRUPT_COUNT = 0
+                            self.SILENCE_COUNTER = 0
+                            return
+
+                        else:
+                            # ❌ backchannel / 继续说：忽略打断，保持SPEAK
+                            self.IN_SPEECH = False
+                            self.interrupt_buf.clear()
+                            self.INTERRUPT_COUNT = 0
+                            self.SILENCE_COUNTER = 0
+                            # 不切换 state，继续 SPEAK
+                            return
             # 2.2 长打断：累计达到/超过 1.5s，无需等待 end，直接切 LISTEN
-            if self.INTERRUPT_COUNT >= self.INTERRUPT_LIMIT:
+            if self.SILENCE_COUNTER == 0 and self.INTERRUPT_COUNT >= self.INTERRUPT_LIMIT:
                 print("✅出现长打断，切换到listen继续听，正确开启第二轮")
                 self.CURRENT_TURN.setdefault("speak", {})["interrupt_time"] = round(self.MEDIA_TIME, 2)
                 self.write_turn()
@@ -340,18 +385,18 @@ def main():
     exp_name = "exp1"
     data_lang = "dev_zh"
     out_lang = "medium_zh"
-    category_dev = ["Negation or Dissatisfaction"]
+    category_dev = ["Pause Handling"]
 
     data_root = Path("exp") / exp_name / "dev" / data_lang
     output_root = Path("exp") / exp_name / "medium" / out_lang
 
     if output_root.exists():
-        print(f"⚠️ 清空输出目录: {output_root}")
-        for item in output_root.iterdir():
-            if item.is_file():
-                item.unlink()
-            elif item.is_dir():
-                shutil.rmtree(item)
+        for category in category_dev:
+            cat_dir = output_root / category
+            if cat_dir.exists():
+                shutil.rmtree(cat_dir)  # 直接删除整个类别目录
+                print(f"⚠️ 清空输出子目录: {cat_dir}")
+
     else:
         output_root.mkdir(parents=True, exist_ok=True)
         
