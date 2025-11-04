@@ -28,6 +28,13 @@ class ConversationEngine:
         self.SILENCE_COUNTER = 0    # 静音计数器
         self.INTERRUPT_COUNT = 0    # 打断帧计数
         self.FILE_NAME = None
+        #end后延续一下，不要立刻判断
+        self.END_HOLD_SEC = 0.64
+        self.END_HOLD_FRAMES = int(self.END_HOLD_SEC / self.FRAME_SEC) #0.64 / 0.016 = 40
+        self.SILENCE_COUNTER = 0
+        #打断后处理
+        self.FROM_INTERRUPT = False
+
 
         # ========== 路径与模型接口 ==========
         self.output_dir = None
@@ -82,14 +89,26 @@ class ConversationEngine:
         # llm_start = time.perf_counter()
         # decision = llm(asr_text)  # {"is_finished": bool, "reply": "..."}
         # llm_time = time.perf_counter() - llm_start
-        listen_prompt = f"如果你认为这段话在口语上说完了,你要作为一个聊天助手,语义上返回对这句话的回复,如果没说完返回continte"
 
         # ========== api ==========
         api_start = time.perf_counter()
         # 拼接音频帧
         user_audio = np.concatenate(audio_buf) if isinstance(audio_buf, list) else audio_buf
+        
+        listen_prompt = f'''
+            你是一个自然聊天的语音助手，要像朋友一样回答用户的问题。
+            不要反问，也不要解释，不要输出任何格式说明。
+            如果用户问到的内容需要你编造，比如不知道答案，也要自然地编造一个合理的回答。
+            语气要口语化、简短，像日常聊天。允许出现幻觉。
+
+            以下是一些示例：
+            用户：我上次吃的那家火锅店叫什么来着？
+            助手：老灶火锅呀。
+        '''
+        
         decision = llm_qwen3o(listen_prompt, user_audio)
-        # print(f"决策结果: {decision}")
+
+        print(f"决策结果: {decision}")
         # exit(0)
         api_time = time.perf_counter() - api_start        
         if "continte" not in decision.lower():
@@ -130,13 +149,6 @@ class ConversationEngine:
     # -------------------------------------------------------
     def handle_listen(self, frame, event):
         """LISTEN 状态：检测用户语音、判断是否说完、决定是否进入 SPEAK"""
-
-        # --- 特殊入口：来自短打断 ---
-        if self.BUFFER and not self.IN_SPEECH:
-            buf = self.BUFFER[:-1] #短打断后传入listen状态时多了一帧
-            self.process_user_segment(buf)
-            return
-
         # --- 1. 用户开始说话 ---
         if event and "start" in event and not self.IN_SPEECH:
             self.IN_SPEECH = True
@@ -151,53 +163,76 @@ class ConversationEngine:
 
         # --- 3. 检测语音结束 ---
         if event and "end" in event:
-            self.process_user_segment(self.BUFFER)
+            self.SILENCE_COUNTER = 1
+            # self.process_user_segment(self.BUFFER)
             return
-
+        if self.SILENCE_COUNTER > 0:
+        # 如果在静音期间出现新的 start，则继续接上 buffer
+            if event and "start" in event:
+                self.SILENCE_COUNTER = 0
+                return
+            else:
+                self.SILENCE_COUNTER += 1
+                # 达到 640 ms（END_HOLD_FRAMES）后，确认结束
+                if self.SILENCE_COUNTER >= self.END_HOLD_FRAMES:
+                    self.SILENCE_COUNTER = 0
+                    self.process_user_segment(self.BUFFER)
+                    return
 
     def handle_speak(self, frame, event):
-        """SPEAK：系统说话中。检测用户短/长打断：
-        - 短打断：<1.5s 且出现 end → ASR+LLM 判定；interrupt=True 才切 LISTEN
-        - 长打断：≥1.5s，无需 end → 直接切 LISTEN
-        """
-        speak_prompt = f"用户刚才打断了我的回答，请判断他是否真的想打断我，如果是请返回' interrupt ',否则返回' continue '"
-        # 1) 首次检测到用户开口：开始累计打断缓冲
+        """SPEAK 状态：检测短打断或长打断"""
         if event and "start" in event and not self.IN_SPEECH:
             self.IN_SPEECH = True
             self.interrupt_buf = [frame]
-            self.interrupt_start_time = self.MEDIA_TIME
             self.INTERRUPT_COUNT = 1
+            self.SILENCE_COUNTER = 0
             return
 
-        # 2) 正在累计可能的打断片段
         if self.IN_SPEECH:
             self.interrupt_buf.append(frame)
             self.INTERRUPT_COUNT += 1
 
-            # 2.1 短打断：在达到 1.5s 之前出现了 end → 做一次语义判定
-            if event and "end" in event and self.INTERRUPT_COUNT < self.INTERRUPT_LIMIT:
-                seg_audio = np.concatenate(self.interrupt_buf)
-                # seg_text  = asr(seg_audio)
-                intent    = llm_qwen3o(speak_prompt, seg_audio)   # 期望 {"interrupt": bool}
-
-                if "interrupt" in intent.lower():
-                    # —— 真正打断：记录时间，写入本轮，切 LISTEN，并把这段语音交给下一轮
-                    self.CURRENT_TURN.setdefault("speak", {})["interrupt_time"] = round(self.MEDIA_TIME, 2)
-                    self.write_turn()
-                    self.STATE = "LISTEN"
-                    self.BUFFER = self.interrupt_buf.copy()  # 种子给下一轮，避免丢帧
-                    self.IN_SPEECH = True
-                else:
-                    # —— 只是backchannel/鼓励继续：忽略，留在 SPEAK
-                    self.IN_SPEECH = False
-
-                # 清理本段缓存
-                self.interrupt_buf.clear()
-                self.INTERRUPT_COUNT = 0
+            # --- 检测到用户结束讲话 ---
+            if event and "end" in event:
+                self.SILENCE_COUNTER = 1
                 return
 
+            # --- 静音确认阶段（640 ms 延迟）---
+            if self.SILENCE_COUNTER > 0:
+                if event and "start" in event:
+                    # 640ms 内出现新语音 → 继续接上
+                    self.SILENCE_COUNTER = 0
+                    return
+                else:
+                    self.SILENCE_COUNTER += 1
+                    if self.SILENCE_COUNTER >= self.END_HOLD_FRAMES:
+                        # ✅ 确认打断结束
+                        seg_audio = np.concatenate(self.interrupt_buf)
+                        speak_prompt = (
+                            "你现在处于SPEAK状态，用户刚才打断了你的回答，请判断他是否真的想打断你，"
+                            "如果是请返回'interrupt'，否则返回'continue'，"
+                            "你只能返回这两个单词。"
+                        )
+                        intent = llm_qwen3o(speak_prompt, seg_audio)
+                        print(f"出现了打断，打断意图判定: {intent}")
+
+                        if "interrupt" in intent.lower():
+                            self.CURRENT_TURN.setdefault("speak", {})["interrupt_time"] = round(self.MEDIA_TIME, 2)
+                            self.write_turn()
+                            self.STATE = "LISTEN"
+                            self.BUFFER = self.interrupt_buf.copy()
+                            print("🔁 检测到短打断，启动新一轮 listen→speak")
+                            self.process_user_segment(self.BUFFER)
+
+                        # 清理状态
+                        self.IN_SPEECH = False
+                        self.interrupt_buf.clear()
+                        self.INTERRUPT_COUNT = 0
+                        self.SILENCE_COUNTER = 0
+                        return
             # 2.2 长打断：累计达到/超过 1.5s，无需等待 end，直接切 LISTEN
             if self.INTERRUPT_COUNT >= self.INTERRUPT_LIMIT:
+                print("✅出现长打断，切换到listen继续听，正确开启第二轮")
                 self.CURRENT_TURN.setdefault("speak", {})["interrupt_time"] = round(self.MEDIA_TIME, 2)
                 self.write_turn()
                 self.STATE = "LISTEN"
@@ -331,6 +366,8 @@ def main():
 
         for wav in tqdm(wav_files, desc=f"Processing {category}"):
             wav_file = wav_path / wav
+            # if wav_file.stem != "0005_0019_add":
+            #     continue
             output_dir = out_path / wav_file.stem
             output_dir.mkdir(parents=True, exist_ok=True)
             
