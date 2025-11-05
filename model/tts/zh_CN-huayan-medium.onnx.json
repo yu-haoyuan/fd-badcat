@@ -1,6 +1,6 @@
 {
   "audio": {
-    "sample_rate": 22050,
+    "sample_rate": 16000,
     "quality": "medium"
   },
   "espeak": {
