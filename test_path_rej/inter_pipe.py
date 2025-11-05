@@ -25,13 +25,17 @@ class ConversationEngine:
         self.MEDIA_TIME = 0.0       # 累计音频时间（秒）
         self.FRAME_IDX = 0          # 帧计数
         self.CURRENT_TURN = None    # 当前轮的 listen + speak 数据
-        self.SILENCE_COUNTER = 0    # 静音计数器
         self.INTERRUPT_COUNT = 0    # 打断帧计数
         self.FILE_NAME = None
-        #end后延续一下，不要立刻判断
-        self.END_HOLD_SEC = 0.64
-        self.END_HOLD_FRAMES = int(self.END_HOLD_SEC / self.FRAME_SEC) #0.64 / 0.016 = 40
+        #end后延续一下，不要立刻判断结束
+        self.END_HOLD_FRAMES = int(0.64 / self.FRAME_SEC) #0.64 / 0.016 = 40
         self.SILENCE_COUNTER = 0
+        #continue推理时间记录
+        self.CONTINUE_INFER_TIMES = []
+        self.AFTER_CONTINUE_SILENT_FRAMES = 0
+        self.AFTER_CONTINUE_TIMEOUT_FRAMES = max(1, int(round(2.0 / self.FRAME_SEC)))
+        self.CONTINUE_ARMED = False
+
         #打断后处理
         self.FROM_INTERRUPT = False
         #历史上下文
@@ -205,9 +209,17 @@ class ConversationEngine:
                         "首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'。"
                         "如果你认为用户已经说完，请只输出字符串'end'。不要输出其他内容。"
                     )
+
+                    start_time = time.time()
                     judge_result = llm_qwen3o(judge_prompt, user_audio).strip().lower()
+                    infer_time = time.time() - start_time
+                    self.CONTINUE_INFER_TIMES.append(infer_time)
+
                     print(f"用户语音完整性判定: {judge_result}")
                     if "continue" in judge_result:
+                        self.CONTINUE_ARMED = True
+                        prefill = int(round(infer_time / self.FRAME_SEC))
+                        self.AFTER_CONTINUE_SILENT_FRAMES = prefill
                         print("🔁 用户未说完，继续累积帧")
                         self.IN_SPEECH = True
                         return
@@ -215,6 +227,38 @@ class ConversationEngine:
                     # === 说完了，进入完整流程 ===
                     self.process_user_segment(self.BUFFER)
                     return
+        # --- 仅在上一次判定为 continue 且已武装时才计数 ---
+        if self.CONTINUE_ARMED:
+            if not event:
+                # 无事件帧：累加空白帧
+                self.AFTER_CONTINUE_SILENT_FRAMES += 1
+
+                # 计算触发阈值 = 2s 对应帧数 + 本次推理耗时折算的帧数
+                last_infer = self.CONTINUE_INFER_TIMES[-1] if self.CONTINUE_INFER_TIMES else 0.0
+                infer_frames = int(round(last_infer / self.FRAME_SEC))
+                trigger_frames = self.AFTER_CONTINUE_TIMEOUT_FRAMES + infer_frames
+
+                # 满足条件：空白帧数超过 (2s + 推理耗时)
+                if self.AFTER_CONTINUE_SILENT_FRAMES >= trigger_frames:
+                    print(
+                        f"⚠️ continue 后空白累计 {self.AFTER_CONTINUE_SILENT_FRAMES} 帧 "
+                        f"(阈值 {trigger_frames} 帧 ≈ 2s+{last_infer:.3f}s)，强制处理"
+                    )
+                    self.process_user_segment(self.BUFFER)
+
+                    # 清理状态
+                    self.CONTINUE_INFER_TIMES.clear()
+                    self.CONTINUE_ARMED = False
+                    self.AFTER_CONTINUE_SILENT_FRAMES = 0
+                    self.IN_SPEECH = False
+                    self.BUFFER.clear()
+                    return
+            else:
+                # 任意事件（start / end）打断空白 → 解除武装并清零
+                self.CONTINUE_ARMED = False
+                self.AFTER_CONTINUE_SILENT_FRAMES = 0
+
+    
     def handle_speak(self, frame, event):
         """SPEAK 状态：检测短打断或长打断"""
         if event and "start" in event and not self.IN_SPEECH:
