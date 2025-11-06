@@ -13,7 +13,8 @@ import base64
 import json
 import tempfile
 import soundfile as sf
-
+import io, torch
+import torchaudio
 root_path = "model"
 
 ASR_MODEL = sherpa_onnx.OnlineRecognizer.from_transducer(
@@ -119,6 +120,10 @@ def llm_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000):
 def tts(text, path):
     with wave.open(str(path), "wb") as f:
         VOICE.synthesize_wav(text, f)
+    data, sr = sf.read(path, dtype="float32")
+    if sr != 16000:
+        data = torchaudio.functional.resample(torch.from_numpy(data).unsqueeze(0), sr, 16000).squeeze(0).numpy()
+        sf.write(path, data, 16000, subtype="PCM_16")
     return str(path)
 
 

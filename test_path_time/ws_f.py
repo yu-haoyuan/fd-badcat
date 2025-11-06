@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
-simulate_full_frontend.py （时间戳同步版）
-------------------------------------------
-- 🎙️ 从本地 WAV 模拟麦克风输入，每16ms发送一帧
-- 🔊 收到后端返回的 TTS 音频，根据其 timestamp 插入
-- 🕒 时间同步：与后端 start_wall 时间保持一致
-------------------------------------------
+simulate_full_frontend_batch.py （批量版本 + 日志写入）
+--------------------------------------------------------
+- 批量遍历 exp/exp3 下的所有子文件夹（如 Follow-up Questions）
+- 对每个 .wav 调用 simulate_full_frontend() 发送音频并保存输出
+- 输出路径与输入相同，只是文件名加 "_output.wav"
+- 所有日志会一边打印到控制台，一边写入 test_path_time/10.txt
+--------------------------------------------------------
 """
 
 import asyncio
@@ -17,13 +18,21 @@ import numpy as np
 import websockets
 from pathlib import Path
 
-
 # ========== 基本配置 ==========
 WS_URL = "ws://127.0.0.1:18000/realtime"
-INPUT_WAV = "exp/exp2/0001_0003.wav"
+BASE_DIR = Path("exp/exp3")
 SAMPLE_RATE = 16000
 CHUNK_SAMPLES = 256  # 16 ms per frame
+LOG_FILE = Path("test_path_time/10.txt")
+LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
 # ==============================
+
+
+def log(msg: str):
+    """统一打印 + 写入日志"""
+    print(msg)
+    with open(LOG_FILE, "a", encoding="utf-8") as f:
+        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {msg}\n")
 
 
 class SpeakerSimulator:
@@ -32,12 +41,10 @@ class SpeakerSimulator:
         self.chunk_time = CHUNK_SAMPLES / sr
         self.total_samples = int(total_duration * sr)
         self.output_path = output_path
-
-        # 初始化全静音 buffer (float32)
         self.audio_buffer = np.zeros(self.total_samples, dtype=np.float32)
-        self.start_wall = None  # 后端计时参考起点
+        self.start_wall = None
         self.interrupted = False
-        print(f"🧮 初始化输出 buffer，总时长 {total_duration:.2f}s ({self.total_samples} samples)")
+        log(f"🧮 初始化输出 buffer，总时长 {total_duration:.2f}s ({self.total_samples} samples)")
 
     def reset_for_new_audio(self, wav_bytes: bytes, start_time: float):
         """在指定时间戳位置插入 TTS 音频"""
@@ -50,18 +57,18 @@ class SpeakerSimulator:
 
         if write_samples > 0:
             self.audio_buffer[start_sample:start_sample + write_samples] = data[:write_samples]
-            print(f"🎵 在 {start_time:.2f}s 插入 TTS（{write_samples / self.sr:.2f}s）")
+            log(f"🎵 在 {start_time:.2f}s 插入 TTS（{write_samples / self.sr:.2f}s）")
 
     def handle_interrupt(self):
         """收到打断后，后续保持静音"""
         self.interrupted = True
-        print("🛑 播放被打断，后续输出静音")
+        log("🛑 播放被打断，后续输出静音")
 
     def save_output(self):
         """保存最终输出音频"""
         self.output_path.parent.mkdir(parents=True, exist_ok=True)
         sf.write(self.output_path, self.audio_buffer, self.sr)
-        print(f"💾 已保存对齐音频: {self.output_path}, 时长 {len(self.audio_buffer) / self.sr:.2f}s")
+        log(f"💾 已保存对齐音频: {self.output_path}, 时长 {len(self.audio_buffer) / self.sr:.2f}s")
 
 
 async def mic_sender(ws, wav_path: Path):
@@ -72,7 +79,7 @@ async def mic_sender(ws, wav_path: Path):
 
     frame_time = CHUNK_SAMPLES / sr
     total_frames = int(np.ceil(len(data) / CHUNK_SAMPLES))
-    print(f"🎙️ 开始发送 {wav_path.name}, 总帧 {total_frames}，时长 {len(data)/sr:.2f}s")
+    log(f"🎙️ 开始发送 {wav_path.name}, 总帧 {total_frames}，时长 {len(data)/sr:.2f}s")
     t0 = time.perf_counter()
 
     for i in range(0, len(data), CHUNK_SAMPLES):
@@ -83,45 +90,38 @@ async def mic_sender(ws, wav_path: Path):
         await asyncio.sleep(frame_time)
 
     await ws.send(json.dumps({"event": "end"}))
-    print(f"📤 音频发送完毕，用时 {time.perf_counter() - t0:.2f}s")
+    log(f"📤 音频发送完毕，用时 {time.perf_counter() - t0:.2f}s")
 
 
-async def simulate_full_frontend():
-    input_path = Path(INPUT_WAV)
-    output_path = input_path.parent / f"{input_path.stem}_output.wav"
-
-    # 获取总时长
-    data, sr = sf.read(str(input_path), dtype="float32")
+async def simulate_full_frontend(wav_path: Path):
+    """单个文件的前端模拟"""
+    output_path = wav_path.parent / f"{wav_path.stem}_output.wav"
+    data, sr = sf.read(str(wav_path), dtype="float32")
     total_duration = len(data) / sr
 
     async with websockets.connect(WS_URL, max_size=None) as ws:
-        print(f"✅ 已连接后端: {WS_URL}")
+        log(f"✅ 已连接后端: {WS_URL}")
         speaker = SpeakerSimulator(total_duration, output_path=output_path)
+        last_tts_timestamp = None
 
-        # === 状态变量 ===
-        last_tts_timestamp = None  # 后端 tts_done timestamp（秒）
+        send_task = asyncio.create_task(mic_sender(ws, wav_path))
 
-        # 启动麦克风发送
-        send_task = asyncio.create_task(mic_sender(ws, input_path))
-
-        # === 接收协程 ===
         async def receiver():
             nonlocal last_tts_timestamp
-
             while True:
                 try:
                     msg = await ws.recv()
                 except websockets.exceptions.ConnectionClosed:
-                    print("⚠️ WebSocket 已关闭，结束接收循环")
+                    log("⚠️ WebSocket 已关闭，结束接收循环")
                     break
 
                 if isinstance(msg, bytes):
                     if last_tts_timestamp is None:
-                        print("⚠️ 收到音频但无 timestamp，跳过写入")
+                        log("⚠️ 收到音频但无 timestamp，跳过写入")
                         continue
                     start_time = last_tts_timestamp
                     speaker.reset_for_new_audio(msg, start_time)
-                    last_tts_timestamp = None  # 用一次即清空
+                    last_tts_timestamp = None
                     continue
 
                 try:
@@ -130,25 +130,49 @@ async def simulate_full_frontend():
 
                     if event == "tts_done":
                         last_tts_timestamp = obj["data"].get("timestamp")
-                        print("tts:", obj)
-                        print(f"🕒 收到 tts_done, timestamp={last_tts_timestamp}s")
+                        log(f"🕒 收到 tts_done, timestamp={last_tts_timestamp}s")
 
                     elif event == "stop_audio":
                         speaker.handle_interrupt()
 
                     else:
-                        print("📨 其他消息:", obj)
+                        log(f"📨 其他消息: {obj}")
 
                 except Exception:
-                    print("📨 文本消息:", msg)
+                    log(f"📨 文本消息: {msg}")
 
-                await asyncio.sleep(0)  # 释放控制权
+                await asyncio.sleep(0)
 
         recv_task = asyncio.create_task(receiver())
+        await send_task
+        speaker.save_output()
 
-        await send_task  # 等待音频发送完毕
-        speaker.save_output()  # ✅ 立即保存输出
+
+async def main():
+    """遍历 exp/exp3 下的所有子目录及 wav 文件"""
+    root_dir = BASE_DIR
+    log("========== 批量前端模拟开始 ==========")
+
+    for subdir in sorted(root_dir.iterdir()):
+        if not subdir.is_dir():
+            continue
+        log(f"\n进入类别目录: {subdir.name}")
+
+        wav_files = sorted(subdir.glob("*.wav"))[:10]
+        if not wav_files:
+            log(f"{subdir.name} 下没有 wav 文件，跳过")
+            continue
+
+        for wav_path in wav_files:
+            log(f"\n==============================")
+            log(f"处理文件: {wav_path}")
+            try:
+                await simulate_full_frontend(wav_path)
+            except Exception as e:
+                log(f"❌ 处理 {wav_path.name} 出错: {e}")
+
+    log("========== 全部处理完成 ==========")
 
 
 if __name__ == "__main__":
-    asyncio.run(simulate_full_frontend())
+    asyncio.run(main())
