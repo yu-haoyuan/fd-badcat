@@ -49,6 +49,7 @@ class ConversationEngine:
         self.RES_PROMPT = (
             "你是一个自然聊天的语音助手，要像朋友一样回答用户的问题。"
             "不要反问，也不要解释，不要输出任何格式说明。"
+            f"如果用户要求重复询问，请你参考历史信息，{self.history}进行正确的重复回答。"
             "以下是用户刚才说的话，请你进行回应："
         )
         self.JUDGE_PROMPT = (
@@ -94,6 +95,14 @@ class ConversationEngine:
         self.FROM_INTERRUPT = False
         self.interrupt_buf.clear()
 
+    def build_res_prompt(self):
+        """动态构造RES_PROMPT，包含最新history"""
+        return (
+            "你是一个自然聊天的语音助手，要像朋友一样回答用户的问题。"
+            "不要反问，也不要解释，不要输出任何格式说明。"
+            f"如果用户要求重复询问，请你参考历史信息，{self.history}进行正确的重复回答。"
+            "以下是用户刚才说的话，请你进行回应："
+        )
 
 
     async def send_control(self, event_type: str, data=None):
@@ -126,6 +135,7 @@ class ConversationEngine:
             "timestamp": round(time.time() - self.start_wall, 3)
         })
         self.history.append({"role": "user", "content": user_text})
+        # await self.send_control("context", {"turn":self.history,"timestamp": round(time.time() - self.start_wall, 3)})
         self.BUFFER.clear()
         return user_text
 
@@ -204,7 +214,9 @@ class ConversationEngine:
 
                     # === 说完了，进入完整流程 ===
                     asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
-                    decision = await self.async_llm(self.RES_PROMPT, user_audio, self.TURN_IDX, add_to_history=True)
+                    prompt_res_1 = self.build_res_prompt()
+                    await self.send_control("prompt_lis", {"p": prompt_res_1,"timestamp": round(time.time() - self.start_wall, 3)})
+                    decision = await self.async_llm(prompt_res_1, user_audio, self.TURN_IDX, add_to_history=True)
                     asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
                     
                     return
@@ -218,7 +230,9 @@ class ConversationEngine:
                 # 调用完整响应逻辑
                 user_audio = np.concatenate(self.BUFFER)
                 asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
-                decision = await self.async_llm(self.RES_PROMPT, user_audio, self.TURN_IDX, add_to_history=True)
+                prompt_res_2 = self.build_res_prompt()
+                await self.send_control("prompt_lis", {"p": prompt_res_2,"timestamp": round(time.time() - self.start_wall, 3)})
+                decision = await self.async_llm(prompt_res_2, user_audio, self.TURN_IDX, add_to_history=True)
                 asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
 
                 # 清理状态
@@ -252,6 +266,7 @@ class ConversationEngine:
             # --- 2.1 检测用户结束讲话（end事件）---
             if event and "end" in event:
                 self.SILENCE_COUNTER = 1
+                await self.send_control("vad_done", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
                 self.INTERRUPT_END_TIME = time.time()
                 return
 
@@ -273,7 +288,9 @@ class ConversationEngine:
                             self.TURN_IDX += 1
                             user_audio = np.concatenate(self.interrupt_buf)
                             asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
-                            decision = await self.async_llm(self.RES_PROMPT, self.BUFFER, self.TURN_IDX, add_to_history=True)
+                            prompt_res_3 = self.build_res_prompt()
+                            await self.send_control("prompt_inter", {"p": prompt_res_3,"timestamp": round(time.time() - self.start_wall, 3)})
+                            decision = await self.async_llm(prompt_res_3, user_audio, self.TURN_IDX, add_to_history=True)
                             asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
 
                             # 清理状态
@@ -291,8 +308,12 @@ class ConversationEngine:
                             self.SILENCE_COUNTER = 0
                             # 不切换 state，继续 SPEAK
                             return
-            # 2.2 长打断：累计达到/超过 1.5s，无需等待 end，直接切 LISTEN
-            if self.interrupt_buf and time.time() - self.INTERRUPT_START_TIME >= 1.5:
+            # 2.2 长打断：只有没有出现end的时候，也就是self.SILENCE_COUNTER == 0
+            # 然后必须要buffer里面有东西
+            #累计达到/超过 1.5s，无需等待 end，直接切 LISTEN
+            if (self.interrupt_buf and 
+                self.SILENCE_COUNTER == 0 and
+                time.time() - self.INTERRUPT_START_TIME >= 1.5):
                 self.TURN_IDX += 1
                 await self.send_control("long_interrupt", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
                 self.STATE = "LISTEN"

@@ -8,7 +8,8 @@ simulate_full_frontend_batch.py （批量版本 + 日志写入）
 - 所有日志会一边打印到控制台，一边写入 test_path_time/10.txt
 --------------------------------------------------------
 """
-
+from tqdm.asyncio import tqdm_asyncio
+from tqdm import tqdm
 import asyncio
 import json
 import io
@@ -17,23 +18,10 @@ import soundfile as sf
 import numpy as np
 import websockets
 from pathlib import Path
-
-# ========== 基本配置 ==========
 WS_URL = "ws://127.0.0.1:18000/realtime"
 BASE_DIR = Path("exp/exp3")
 SAMPLE_RATE = 16000
 CHUNK_SAMPLES = 256  # 16 ms per frame
-LOG_FILE = Path("test_path_time/10.txt")
-LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
-# ==============================
-
-
-def log(msg: str):
-    """统一打印 + 写入日志"""
-    print(msg)
-    with open(LOG_FILE, "a", encoding="utf-8") as f:
-        f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} {msg}\n")
-
 
 class SpeakerSimulator:
     def __init__(self, total_duration: float, sr=SAMPLE_RATE, output_path: Path = None):
@@ -147,32 +135,51 @@ async def simulate_full_frontend(wav_path: Path):
         await send_task
         speaker.save_output()
 
+# ========== 基本配置 ==========
+
+
+base_dir = Path("exp/exp3")
+log_file = Path("test_path_time/11071046_log.txt")
+log_file.parent.mkdir(parents=True, exist_ok=True)
+
+read_all_subdirs = True    # false 时只读取 target_subdir
+max_files = 10             # none 表示全部
+
+target_subdir = "Repetition Requests"
+
+def log(msg):
+    with log_file.open("a") as f:
+        f.write(msg + "\n")
+    print(msg)
 
 async def main():
-    """遍历 exp/exp3 下的所有子目录及 wav 文件"""
-    root_dir = BASE_DIR
-    log("========== 批量前端模拟开始 ==========")
+    log_file.write_text("")
+    log("========== 前端模拟开始 ==========")
 
-    for subdir in sorted(root_dir.iterdir()):
-        if not subdir.is_dir():
-            continue
-        log(f"\n进入类别目录: {subdir.name}")
+    if read_all_subdirs:
+        dirs = [d for d in base_dir.iterdir() if d.is_dir()]
+    else:
+        dirs = [base_dir / target_subdir]
 
-        wav_files = sorted(subdir.glob("*.wav"))[:10]
+    for subdir in sorted(dirs):
+        log(f"\n进入目录: {subdir.name}")
+        all_wavs = list(subdir.glob("*.wav"))
+        wav_files = [f for f in all_wavs if not f.name.endswith("_output.wav")]
+        wav_files = sorted(wav_files)
+
+        if max_files:
+            wav_files = wav_files[:max_files]
         if not wav_files:
-            log(f"{subdir.name} 下没有 wav 文件，跳过")
+            log(f"{subdir.name} 下没有 wav 文件")
             continue
 
-        for wav_path in wav_files:
-            log(f"\n==============================")
-            log(f"处理文件: {wav_path}")
-            try:
-                await simulate_full_frontend(wav_path)
-            except Exception as e:
-                log(f"❌ 处理 {wav_path.name} 出错: {e}")
+        for wav_path in tqdm(wav_files, desc=subdir.name, ncols=80):
+            log(f"处理文件: {wav_path.name}")
+            await simulate_full_frontend(wav_path)
 
     log("========== 全部处理完成 ==========")
 
-
+if __name__ == "__main__":
+    asyncio.run(main())
 if __name__ == "__main__":
     asyncio.run(main())
