@@ -8,7 +8,7 @@ simulate_full_frontend_batch.py （批量版本 + 日志写入）
 - 所有日志会一边打印到控制台，一边写入 test_path_time/11071046_log_*.txt
 --------------------------------------------------------
 """
-
+import argparse
 from pathlib import Path
 from datetime import datetime
 import asyncio
@@ -22,7 +22,7 @@ import websockets
 from tqdm import tqdm
 
 # ========== 基本配置 ==========
-WS_URL = "ws://127.0.0.1:18010/realtime"
+WS_URL = None
 SAMPLE_RATE = 16000
 CHUNK_SAMPLES = 256  # 16 ms per frame
 
@@ -199,15 +199,20 @@ async def simulate_full_frontend(wav_path: Path, *, log=print):
 
 async def main():
 
+    global WS_URL
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=18000)
+    parser.add_argument("--exp", type=str, default="exp4")
+    parser.add_argument("--lang", type=str, default="zh")
+    args = parser.parse_args()
 
-# 批量参数
-#  duankou // exp // lang // log
+    WS_URL = f"ws://127.0.0.1:{args.port}/realtime"
+    base_dir = Path(f"exp/{args.exp}/dev_{args.lang}")
+    log_base = Path(f"exp/{args.exp}/1108{args.lang}_log")  # 日志基名（会自动切分为 _1.txt, _2.txt ...）
 
-    base_dir = Path("exp/exp4/dev_zh")
-    # base_dir = Path("exp/exp3/dev_zh")
-    log_base = Path("test_path_time/11081800_log")  # 日志基名（会自动切分为 _1.txt, _2.txt ...）
-    log_base.parent.mkdir(parents=True, exist_ok=True)
 #  exp // lang // log
+    log_base.parent.mkdir(parents=True, exist_ok=True)
+
     read_all_subdirs = True    # False 时只读取 target_subdir
     max_files = None           # None 表示全部
     target_subdir = "Repetition Requests"

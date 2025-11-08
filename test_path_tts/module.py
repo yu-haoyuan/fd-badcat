@@ -33,7 +33,7 @@ QWEN_URL = "http://127.0.0.1:10004/v1/chat/completions"
 
 
 def _call_index_tts(text: str) -> bytes:
-    url = "http://127.0.0.1:18001/tts"
+    url = "http://127.0.0.1:19000/tts"
     payload = {
         "text": text,
         "character": "ht"

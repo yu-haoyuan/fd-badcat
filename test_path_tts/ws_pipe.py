@@ -6,7 +6,7 @@ from silero_vad import load_silero_vad, VADIterator
 from module import asr, llm_qwen3o, tts
 import argparse
 import uvicorn
-
+from datetime import datetime
 # ============================================================
 # ConversationEngine （与你的逻辑一致，只加 websocket 通知能力）
 # ============================================================
@@ -38,8 +38,8 @@ class ConversationEngine:
         self.interrupt_buf = []
         self.INTERRUPT_START_TIME = 0
 
-        self.output_dir = Path("realtime_out1")
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        self.output_dir = None
+        # self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.vad_model = load_silero_vad()
         self.vad_iterator = VADIterator(self.vad_model, sampling_rate=self.SAMPLE_RATE)
@@ -206,11 +206,11 @@ class ConversationEngine:
                     await self.send_control("vad_640_done", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
                     user_audio = np.concatenate(self.BUFFER)
                     decision = await self.async_llm(self.JUDGE_PROMPT, user_audio, self.TURN_IDX, add_to_history=False)
-                    print(f"用户语音完整性判定: {decision}")
+                    # print(f"用户语音完整性判定: {decision}")
                     if "continue" in decision.lower():
                         self.CONTINUE_ARMED = True
                         self.CONTINUE_START_TIME = time.time()
-                        print("🔁 用户未说完，继续累积帧")
+                        # print("🔁 用户未说完，继续累积帧")
                         self.IN_SPEECH = True
                         return
 
@@ -228,7 +228,7 @@ class ConversationEngine:
             # 检查当前是否超时
             elapsed = time.time() - self.CONTINUE_START_TIME
             if elapsed >= 2.0:  # 超过2秒没新语音就强制处理
-                print(f"⚠️ continue 超时 {elapsed:.2f}s，强制进入完整处理")
+                # print(f"⚠️ continue 超时 {elapsed:.2f}s，强制进入完整处理")
                 # 调用完整响应逻辑
                 user_audio = np.concatenate(self.BUFFER)
                 asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
@@ -282,7 +282,7 @@ class ConversationEngine:
                     if elapsed_silence >= 0.64:  # 超过640ms，认为打断结束
                         seg_audio = np.concatenate(self.interrupt_buf)
                         intent = await self.async_llm(self.INTERRUPT_PROMPT, seg_audio, self.TURN_IDX, add_to_history=False)
-                        print(f"出现了打断，打断意图判定: {intent}")
+                        # print(f"出现了打断，打断意图判定: {intent}")
 
                         if "interrupt" in intent.lower():
                             await self.send_control("shot_interrupt", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
@@ -332,7 +332,8 @@ class ConversationEngine:
 
     async def run_realtime(self, websocket: WebSocket):
         await websocket.accept()
-        print("✅ 前端已连接，进入实时会话循环")
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{now}] ✅ 前端已连接，进入实时会话循环")
         self.start_wall = time.time() #是否要初始化？是否需要reset？
         # self.MEDIA_TIME = 0.0
         # self.FRAME_IDX = 0
@@ -368,8 +369,8 @@ class ConversationEngine:
                     self.FRAME_IDX += 1
 
                     event = self.detect_vad_frame(frame)
-                    if event and ( "start" in event or "end" in event):
-                        print(f"[Frame {self.FRAME_IDX}] VAD Event: {event}, STATE: {self.STATE}")
+                    # if event and ( "start" in event or "end" in event):
+                    #     print(f"[Frame {self.FRAME_IDX}] VAD Event: {event}, STATE: {self.STATE}")
                     if self.STATE == "LISTEN":
                         await self.handle_listen(frame, event)
                     elif self.STATE == "SPEAK":
@@ -391,23 +392,26 @@ class ConversationEngine:
 # FastAPI 应用
 # ============================================================
 
-def create_app() -> FastAPI:
+def create_app(output_dir: str) -> FastAPI:
     app = FastAPI()
     @app.websocket("/realtime")
     async def realtime_ws(websocket: WebSocket):
         engine = ConversationEngine(websocket=websocket)
+        engine.output_dir = Path("exp") / output_dir
+        engine.output_dir.mkdir(parents=True, exist_ok=True)
+
         await engine.run_realtime(websocket)
     return app
 
 
 def main():
     parser = argparse.ArgumentParser(description="Realtime Voice WS Server")
+    parser.add_argument("--medium", type=str, default="realtime_out1",help="中间结果输出目录 (默认: realtime_out1)")
     parser.add_argument("--host", default="0.0.0.0", help="Bind host")
-    parser.add_argument("--port", type=int, default=18010, help="Bind port")
-    parser.add_argument("--reload", action="store_true", help="Enable reload (dev)")
+    parser.add_argument("--port", type=int, default=18000, help="Bind port")
     args = parser.parse_args()
 
-    app = create_app()
+    app = create_app(args.medium)
     uvicorn.run(app, host=args.host, port=args.port)
 
 if __name__ == "__main__":
