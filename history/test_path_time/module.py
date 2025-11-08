@@ -24,10 +24,10 @@ ASR_MODEL = sherpa_onnx.OnlineRecognizer.from_transducer(
     tokens=f"{root_path}/sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16/tokens.txt",
     num_threads=1,
 )
-VOICE = PiperVoice.load(f"{root_path}/tts/zh_CN-huayan-medium.onnx")
+VOICE = PiperVoice.load(f"{root_path}/tts/en_US-lessac-medium.onnx")
 OPENAI_CLIENT = openai.OpenAI(api_key=os.getenv("LLM_API_KEY", "not-needed"), base_url="http://127.0.0.1:8000/v1")
 LLM_MODEL = "Qwen2.5-0.5B-Instruct"
-LLM_SYSTEM = "你是客服机器人，几个字回答用户,文本不要有任何格式"
+LLM_SYSTEM = "你是客服机器人，几个字回答用户,文本不要有任何格式,根据用户语言决定你回答的语言"
 
 QWEN_URL = "http://127.0.0.1:10004/v1/chat/completions"
 
@@ -68,7 +68,7 @@ def llm_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000):
         Qwen 返回的文本字符串
     """
     # messages = [{"role": "system", "content": "你是一个语音客服,你要没有任何格式的在50字10s左右回答用户"}]
-    messages = [{"role": "system", "content": "你是一个语音客服,你要没有任何格式的在10个字左右回答用户"}]
+    messages = [{"role": "system", "content": "你是一个语音客服,你要没有任何格式的在10个字左右回答用户，根据用户语言决定你回答的语言，用户语言是中文的时候，回答中文，用户语言是英文的时候，回答英文"}]
 
     # 如果包含音频，构造音频+文本混合输入
     if audio_array is not None:

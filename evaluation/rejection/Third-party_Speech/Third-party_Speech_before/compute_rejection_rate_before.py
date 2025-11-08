@@ -42,13 +42,18 @@ def process_folder(folder_path):
     if total_count > 0:
         ratio = ahead_count / total_count
         print(f"\n拒识率: {ratio:.3%} ({ahead_count}/{total_count})")
+        summary = {
+            "total": total_count,
+            "ahead": ahead_count,
+            "ratio": ratio,
+    }
     else:
         print("没有有效结果。")
         summary = {
-        "total": total_count,
-        "ahead": ahead_count,
-        "ratio": ratio,
-    }
+            "total": 0,
+            "ahead": 0,
+            "ratio": 0,
+        }
     return summary
 
 import argparse
@@ -68,6 +73,7 @@ def main():
 
     with open(output_file, "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=2)
+        print("rr—brfore ok")
 
 if __name__ == "__main__":
     main()

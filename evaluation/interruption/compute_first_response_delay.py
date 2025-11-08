@@ -22,7 +22,7 @@ def process_pair(origin_file, output_file):
     return None
 
 
-def process_folder(folder_path):
+def process_folder1(folder_path):
     diffs = []
     files = os.listdir(folder_path)
 
@@ -50,10 +50,8 @@ def process_folder(folder_path):
 
 if __name__ == "__main__":
     import argparse
-    parser = argparse.ArgumentParser(
-        description="Compute first response delay from JSON files in a folder."
-    )
+    parser = argparse.ArgumentParser()
     parser.add_argument("--folder", type=str, required=True)
     args = parser.parse_args()
     folder = args.folder
-    process_folder(folder)
+    process_folder1(folder)

@@ -22,7 +22,7 @@ def process_pair(origin_file, output_file):
     return None
 
 
-def process_folder(folder_path):
+def process_folder2(folder_path):
     diffs = []
     files = os.listdir(folder_path)
 
@@ -42,11 +42,18 @@ def process_folder(folder_path):
 
     if diffs:
         avg = statistics.mean(diffs)
+        return avg, len(diffs)
         print(f"\n最终平均值: {avg:.3f} (共 {len(diffs)} 个有效样本)")
     else:
         print("没有有效结果。")
+        return 0, 0
+
 
 
 if __name__ == "__main__":
-    folder = "./dev/Third-party_Speech_before"  # 修改为你的存放wav的文件夹路径
-    process_folder(folder)
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--folder", type=str, required=True)
+    args = parser.parse_args()
+    folder = args.folder
+    process_folder2(folder)

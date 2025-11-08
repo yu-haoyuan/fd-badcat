@@ -39,7 +39,8 @@ def get_time_aligned_transcription(data_path, gpu_id=0):
         model="paraformer-zh",
         model_revision="v2.0.4",
         vad_model="fsmn-vad",
-        vad_model_revision="v2.0.4"
+        vad_model_revision="v2.0.4",
+        disable_update=True
     )
 
     for audio_path in tqdm(audio_paths):
