@@ -54,4 +54,10 @@ python test_path_tts/ws_f.py \
 --lang "en" \
 --port 18001 # en
 
+---
 
+python test_path_tts/inter_score.py --exp exp4
+
+huggingface-cli download --resume-download nvidia/parakeet-tdt-0.6b-v2 --local-dir model/parakeet-tdt-0.6b-v2
+
+python test_path_tts/inter_sum.py --exp exp4

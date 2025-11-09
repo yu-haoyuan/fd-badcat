@@ -208,7 +208,7 @@ async def main():
 
     WS_URL = f"ws://127.0.0.1:{args.port}/realtime"
     base_dir = Path(f"exp/{args.exp}/dev_{args.lang}")
-    log_base = Path(f"exp/{args.exp}/1108{args.lang}_log")  # 日志基名（会自动切分为 _1.txt, _2.txt ...）
+    log_base = Path(f"exp/{args.lang}_{args.exp}_log")  # 日志基名（会自动切分为 _1.txt, _2.txt ...）
 
 #  exp // lang // log
     log_base.parent.mkdir(parents=True, exist_ok=True)

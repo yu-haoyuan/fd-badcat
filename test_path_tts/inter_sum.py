@@ -1,7 +1,12 @@
 import json
+import argparse
 from pathlib import Path
 from collections import Counter
 
+
+# ===============================
+# 工具函数
+# ===============================
 
 def _stats_by_axis(records):
     """计算行为轴统计（仅用 'C' 轴），返回 ratios 里有 'C_RESPOND' 的占比。"""
@@ -18,8 +23,9 @@ def _stats_by_axis(records):
     fmt_ratios = {ax: {k: round(v, 2) for k, v in ratios[ax].items()} for ax in ["C"]}
     return fmt_ratios.get("C", {}).get("C_RESPOND", 0.0)
 
+
 def _stats_by_axis_resume(records):
-    """计算行为轴统计（仅用 'C' 轴），返回 ratios 里有 'resume' 的占比。"""
+    """计算行为轴统计（仅用 'C' 轴），返回 ratios 里有 'C_RESUME' 的占比。"""
     axes = {"C": Counter()}
     for rec in records:
         for tag in rec.get("behaviour", []):
@@ -61,27 +67,25 @@ def _read_behaviour_records(behaviour_path_base: Path) -> list:
     raise FileNotFoundError(f"行为评估文件不存在: {jsonl} 或 {js}")
 
 
-def build_single_category(exp: str, category: str):
-    """
-    读取 exp/{exp}/score/{category} 下的三个结果文件，
-    生成同目录下 {category}_all.json
-    """
-    cat_dir = Path(f"exp/{exp}/score") / category
+# ===============================
+# 主处理函数（增加 lang 参数）
+# ===============================
+
+def build_single_category(exp: str, category: str, lang: str):
+    """读取 exp/{exp}/score/{lang}/{category} 下的结果文件，生成 {category}_all.json"""
+    cat_dir = Path(f"exp/{exp}/score/{lang}") / category
 
     latency_path = cat_dir / f"{category}_latency_results.json"
     ftd_path = cat_dir / f"{category}_ftd.json"
     behaviour_base = cat_dir / f"{category}_content_tags.json"
 
-    # 1) latency
     latency_data = _safe_read_json(latency_path)
     avg_latency_stop = latency_data.get("average_latency", {}).get("avg_latency_stop")
     avg_latency_resp = latency_data.get("average_latency", {}).get("avg_latency_resp")
 
-    # 2) ftd
     ftd_data = _safe_read_json(ftd_path)
     avg_first_time_delay = ftd_data.get("avg_first_time_delay")
 
-    # 3) behaviour
     records = _read_behaviour_records(behaviour_base)
     average_RESPOND_score = _stats_by_axis(records)
 
@@ -97,21 +101,17 @@ def build_single_category(exp: str, category: str):
         json.dump(out_data, f, ensure_ascii=False, indent=2)
     print(f"✅ 已生成: {out_path}")
 
-def reject_rate_category(exp: str, category: str):
-    """
-    处理 'Pause Handling' 和 'User Real-time Backchannels' 类别的特殊需求，
-    计算 avg_first_time_delay 和 reject_rate。
-    """
-    cat_dir = Path(f"exp/{exp}/score") / category
+
+def reject_rate_category(exp: str, category: str, lang: str):
+    """处理 'Pause Handling' 与 'Third-party Speech_before' 类别。"""
+    cat_dir = Path(f"exp/{exp}/score/{lang}") / category
 
     ftd_path = cat_dir / f"{category}_ftd.json"
     reject_rate_path = cat_dir / f"reject_rate.json"
 
-    # 1) ftd
     ftd_data = _safe_read_json(ftd_path)
     avg_first_time_delay = ftd_data.get("avg_first_time_delay")
 
-    # 2) reject_rate
     reject_rate_data = _safe_read_json(reject_rate_path)
     total = reject_rate_data.get("total", 0)
     ahead = reject_rate_data.get("ahead", 0)
@@ -128,21 +128,16 @@ def reject_rate_category(exp: str, category: str):
     print(f"✅ 已生成: {out_path}")
 
 
-def reject_resume_category(exp: str, category: str):
-    """
-    处理 'Speech Directed at Others'，'Third-party Speech_after' 和 'User Real-time Backchannels' 类别，
-    计算 avg_first_time_delay 和 RESUME 的占比。
-    """
-    cat_dir = Path(f"exp/{exp}/score") / category
+def reject_resume_category(exp: str, category: str, lang: str):
+    """处理 'Speech Directed at Others'、'Third-party Speech_after'、'User Real-time Backchannels' 类别。"""
+    cat_dir = Path(f"exp/{exp}/score/{lang}") / category
 
     ftd_path = cat_dir / f"{category}_ftd.json"
     behaviour_base = cat_dir / f"{category}_content_tags.json"
 
-    # 1) ftd
     ftd_data = _safe_read_json(ftd_path)
     avg_first_time_delay = ftd_data.get("avg_first_time_delay")
 
-    # 2) behaviour and RESUME score
     records = _read_behaviour_records(behaviour_base)
     average_RESUME_score = _stats_by_axis_resume(records)
 
@@ -157,69 +152,80 @@ def reject_resume_category(exp: str, category: str):
     print(f"✅ 已生成: {out_path}")
 
 
-def calculate_average_of_keys(exp: str, categories: list):
-    """
-    计算每个类别的 {category}_all.json 中相同键对应的值的平均数
-    """
+def calculate_average_of_keys(exp: str, categories: list, lang: str):
+    """计算每个类别 {category}_all.json 中相同键的平均值"""
     all_data = []
-
-    # 遍历每个类别的all.json文件
     for category in categories:
-        cat_dir = Path(f"exp/{exp}/score") / category
+        cat_dir = Path(f"exp/{exp}/score/{lang}") / category
         all_file_path = cat_dir / f"{category}_all.json"
         try:
             data = _safe_read_json(all_file_path)
             all_data.append(data)
         except Exception as e:
-            print(f"⚠️ 处理 {category} 时出错: {e}")
+            print(f"⚠️ 处理 {lang}/{category} 时出错: {e}")
 
-    # 获取所有键的集合
+    if not all_data:
+        print(f"⚠️ 无有效数据用于平均计算: {lang}")
+        return
+
     keys = all_data[0].keys()
-
-    # 计算每个键的平均值
     averages = {}
     for key in keys:
         values = [data.get(key, 0) for data in all_data]
         averages[key] = sum(values) / len(values)
 
-    # 打印每个键的平均值
+    print(f"\n📊 {lang} 平均值:")
     for key, avg in averages.items():
-        print(f"Key: {key}, Average: {avg:.2f}")
+        print(f"  {key}: {avg:.3f}")
+
+
+# ===============================
+# 主入口
+# ===============================
 
 def main():
-    exp = "exp3"
-    base_score_dir = Path(f"exp/{exp}/score")
-    interrupt_cata = ["Follow-up Questions", 
-                      "Negation or Dissatisfaction",
-                      "Repetition Requests",
-                      "Silence or Termination",
-                      "Topic Switching"]
-    # 自动遍历 score 下的所有文件夹
-    for cat_dir in interrupt_cata:
-        try:
-            build_single_category(exp, cat_dir)
-        except Exception as e:
-            print(f"⚠️ 处理 {cat_dir} 时出错: {e}")
+    parser = argparse.ArgumentParser(description="处理多语言多类别得分文件夹")
+    parser.add_argument("--exp", type=str, required=True, help="实验名称，例如 exp3 或 exp4")
+    args = parser.parse_args()
 
-    calculate_average_of_keys(exp, interrupt_cata)
-    
-    reject_rate_cata = ["Pause Handling",
-                        "Third-party Speech_before"]
-    for rcat_dir in reject_rate_cata:
-        try:
-            reject_rate_category(exp, rcat_dir)
-        except Exception as e:
-            print(f"⚠️ 处理 {rcat_dir} 时出错: {e}")  
+    exp = args.exp
+    langs = ["cn", "en"]
 
+    interrupt_cata = [
+        "Follow-up Questions",
+        "Negation or Dissatisfaction",
+        "Repetition Requests",
+        "Silence or Termination",
+        "Topic Switching"
+    ]
+    reject_rate_cata = ["Pause Handling", "Third-party Speech_before"]
+    reject_resume_cata = [
+        "Speech Directed at Others",
+        "Third-party Speech_after",
+        "User Real-time Backchannels"
+    ]
 
-    reject_resume_cata = ["Speech Directed at Others",
-                          "Third-party Speech_after",
-                          "User Real-time Backchannels"]   
-    for rcat_dir in reject_resume_cata:
-        try:
-            reject_resume_category(exp, rcat_dir)
-        except Exception as e:
-            print(f"⚠️ 处理 {rcat_dir} 时出错: {e}")  
+    for lang in langs:
+        print(f"\n处理语言目录: {lang}")
+        for cat in interrupt_cata:
+            try:
+                build_single_category(exp, cat, lang)
+            except Exception as e:
+                print(f"⚠️ 处理 {lang}/{cat} 出错: {e}")
+
+        calculate_average_of_keys(exp, interrupt_cata, lang)
+
+        for cat in reject_rate_cata:
+            try:
+                reject_rate_category(exp, cat, lang)
+            except Exception as e:
+                print(f"⚠️ 处理 {lang}/{cat} 出错: {e}")
+
+        for cat in reject_resume_cata:
+            try:
+                reject_resume_category(exp, cat, lang)
+            except Exception as e:
+                print(f"⚠️ 处理 {lang}/{cat} 出错: {e}")
 
 
 if __name__ == "__main__":
