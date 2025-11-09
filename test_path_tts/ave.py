@@ -96,16 +96,25 @@ def ave_reject_rate(exp, langs):
 
 def compute_rejection_total_score(reject_resume_stats: dict, reject_rate_stats: dict) -> float:
     """
-    Rejection Total Score：
-      - 收集所有 average_RESUME_score 与 reject_rate（包括0）
-      - 一起求平均，返回 0~100 百分数
+    Rejection Total Score（修改版）：
+      - Third-party Speech_before / after 先取平均
+      - 然后与其他三个类别（Speech Directed at Others, User Real-time Backchannels, Pause Handling）一起求平均
+      - 总分除以4后乘100
     """
-    vals = []
-    for v in reject_resume_stats.values():
-        vals.append(float(v.get("average_RESUME_score", 0)))
-    for v in reject_rate_stats.values():
-        vals.append(float(v.get("reject_rate", 0)))
-    return round(mean(vals) * 100, 2) if vals else 0.0
+    # 各部分提取
+    sda = reject_resume_stats.get("Speech Directed at Others", {}).get("average_RESUME_score", 0.0)
+    urbc = reject_resume_stats.get("User Real-time Backchannels", {}).get("average_RESUME_score", 0.0)
+    ph = reject_rate_stats.get("Pause Handling", {}).get("reject_rate", 0.0)
+
+    tp_before = reject_rate_stats.get("Third-party Speech_before", {}).get("reject_rate", 0.0)
+    tp_after = reject_resume_stats.get("Third-party Speech_after", {}).get("average_RESUME_score", 0.0)
+
+    # 先合并 before/after
+    third_party_avg = (tp_before + tp_after) / 2
+
+    # 再取整体平均（分母=4）
+    vals = [sda, urbc, ph, third_party_avg]
+    return round(mean(vals) * 100, 3)
 
 
 def compute_final(exp):

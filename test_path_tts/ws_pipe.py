@@ -1,18 +1,20 @@
-import os, json, asyncio, wave, time, torch, soundfile as sf, numpy as np
+import json, asyncio, time, torch, soundfile as sf, numpy as np
 from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
 from silero_vad import load_silero_vad, VADIterator
 from module import asr, llm_qwen3o, tts
 import argparse
 import uvicorn
 from datetime import datetime
+import yaml
+
 # ============================================================
 # ConversationEngine （与你的逻辑一致，只加 websocket 通知能力）
 # ============================================================
 
 class ConversationEngine:
-    def __init__(self, sample_rate=16000, window_size=256, websocket: WebSocket = None):
+    def __init__(self, sample_rate=16000, window_size=256, websocket: WebSocket = None, prompts: dict = None):
+
         self.SAMPLE_RATE = sample_rate
         self.WINDOW_SIZE = window_size
         self.FRAME_SEC = window_size / sample_rate
@@ -46,38 +48,9 @@ class ConversationEngine:
         self.websocket = websocket  # ✅ 保存 websocket 引用用于事件推送
 
         #prompt
-        self.RES_PROMPT = (
-            "你是一个自然聊天的语音助手，要像朋友一样回答用户的问题。"
-            "必须根据你听到的语言回答对应的语言，只有中文和英文"
-            "不要反问，也不要解释，不要输出任何格式说明。"
-            f"如果用户要求重复询问，请你参考历史信息，{self.history}进行正确的重复回答。"
-            "以下是用户刚才说的话，请你进行回应："
-        )
-        self.JUDGE_PROMPT = (
-            "你需要从日常对话的角度,而不是语法的角度去判断这句话是否说完了。"
-            "首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'。"
-            "如果你认为用户已经说完，请只输出字符串'end'。不要输出其他内容。"
-        )
-        self.INTERRUPT_PROMPT = (
-            "你现在处于 SPEAK 状态，用户刚才在你说话时发出了一段语音。"
-            "请根据语义判断他是否真的想打断你。"
-            "如果是明确的反驳、否定、提出问题、要求停止、要求更正等，返回 'interrupt'；"
-            "如果只是附和、回应、赞同或鼓励（例如“好的”“知道了”“说得好”“嗯嗯”“行”），"
-            "请返回 'continue'。"
-            "你只能返回这两个单词之一。不要解释、不要输出其它内容。\n\n"
-
-            "以下是一些示例：\n"
-            "用户：知道了。\n助手：continue\n"
-            "用户：好得很。\n助手：continue\n"
-            "用户：你说得真棒。\n助手：continue\n"
-            "用户：嗯嗯，对。\n助手：continue\n"
-            "用户：我不同意你说的。\n助手：interrupt\n"
-            "用户：不是这样的。\n助手：interrupt\n"
-            "用户：你别说了。\n助手：interrupt\n"
-            "用户：等一下。\n助手：interrupt\n\n"
-
-            "现在请判断当前用户这段语音的类型，只返回 'interrupt' 或 'continue'："
-        )
+        self.prompts = prompts or {}
+        self.JUDGE_PROMPT = self.prompts.get("judge", None)
+        self.INTERRUPT_PROMPT = self.prompts.get("interrupt", None)
 
     def reset(self):
         self.STATE = "LISTEN"
@@ -98,6 +71,10 @@ class ConversationEngine:
 
     def build_res_prompt(self):
         """动态构造RES_PROMPT，包含最新history"""
+        base = self.prompts.get("response_template", None)
+        if base:
+            return base.replace("{history}", json.dumps(self.history, ensure_ascii=False))
+        # fallback:
         return (
             "你是一个自然聊天的语音助手，要像朋友一样回答用户的问题\n"
             "不要反问，也不要解释，不要输出任何格式说明，必须根据你听到的语言回答对应的语言，只有中文or英文\n"
@@ -392,27 +369,39 @@ class ConversationEngine:
 # FastAPI 应用
 # ============================================================
 
-def create_app(output_dir: str) -> FastAPI:
+def create_app(output_dir: str, prompts: dict) -> FastAPI:
     app = FastAPI()
     @app.websocket("/realtime")
     async def realtime_ws(websocket: WebSocket):
-        engine = ConversationEngine(websocket=websocket)
+        # ✅ 把 prompts 传给 ConversationEngine
+        engine = ConversationEngine(websocket=websocket, prompts=prompts)
         engine.output_dir = Path("exp") / output_dir
         engine.output_dir.mkdir(parents=True, exist_ok=True)
-
         await engine.run_realtime(websocket)
-    return app
 
+    return app
 
 def main():
     parser = argparse.ArgumentParser(description="Realtime Voice WS Server")
-    parser.add_argument("--medium", type=str, default="realtime_out1",help="中间结果输出目录 (默认: realtime_out1)")
-    parser.add_argument("--host", default="0.0.0.0", help="Bind host")
-    parser.add_argument("--port", type=int, default=18000, help="Bind port")
+    parser.add_argument("--config", type=str, default="test_path_tts/config_cn.yaml", help="YAML配置文件路径")
+    # parser.add_argument("--medium", type=str, default="realtime_out1",help="中间结果输出目录 (默认: realtime_out1)")
+    # parser.add_argument("--host", default="0.0.0.0", help="Bind host")
+    # parser.add_argument("--port", type=int, default=18000, help="Bind port")
     args = parser.parse_args()
 
-    app = create_app(args.medium)
-    uvicorn.run(app, host=args.host, port=args.port)
+    with open(args.config, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+
+    server_cfg = cfg.get("server", {})
+    prompts_cfg = cfg.get("prompts", {})
+
+    medium = server_cfg.get("medium", "realtime_out1")
+    host = server_cfg.get("host", "0.0.0.0")
+    port = server_cfg.get("port", 18000)
+
+
+    app = create_app(medium, prompts_cfg)
+    uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":
     main()

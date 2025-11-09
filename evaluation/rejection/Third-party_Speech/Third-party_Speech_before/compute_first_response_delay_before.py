@@ -42,8 +42,9 @@ def process_folder2(folder_path):
 
     if diffs:
         avg = statistics.mean(diffs)
-        return avg, len(diffs)
         print(f"\n最终平均值: {avg:.3f} (共 {len(diffs)} 个有效样本)")
+        return avg, len(diffs)
+        
     else:
         print("没有有效结果。")
         return 0, 0

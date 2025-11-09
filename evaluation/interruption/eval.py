@@ -218,7 +218,7 @@ def eval_behavior_all(data_dir, client, task, output_dir):
     # 计算统计信息
     counts, totals, ratios = stats_by_axis([r for _, r in output_list])
     fmt_ratios = {
-        ax: {k: round(v, 2) for k, v in sorted(ratios[ax].items())} for ax in ["C"]
+        ax: {k: round(v, 3) for k, v in sorted(ratios[ax].items())} for ax in ["C"]
     }
     
     return fmt_ratios
