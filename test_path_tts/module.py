@@ -15,14 +15,13 @@ import tempfile
 import soundfile as sf
 import io, torch
 import torchaudio
-root_path = "model"
 
-ASR_MODEL = sherpa_onnx.OnlineRecognizer.from_transducer(
-    encoder=f"{root_path}/sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16/encoder-epoch-99-avg-1.onnx",
-    decoder=f"{root_path}/sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16/decoder-epoch-99-avg-1.onnx",
-    joiner=f"{root_path}/sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16/joiner-epoch-99-avg-1.onnx",
-    tokens=f"{root_path}/sherpa-onnx-streaming-zipformer-small-bilingual-zh-en-2023-02-16/tokens.txt",
-    num_threads=1,
+asr_dir = "model/sherpa-onnx-paraformer-zh-2024-03-09"
+ASR_MODEL = sherpa_onnx.OfflineRecognizer.from_paraformer(
+    paraformer=f"{asr_dir}/model.onnx",
+    tokens=f"{asr_dir}/tokens.txt",
+    num_threads=2,
+    provider="cpu",  # 可改为 "cuda" 使用 GPU
 )
 
 OPENAI_CLIENT = openai.OpenAI(api_key=os.getenv("LLM_API_KEY", "not-needed"), base_url="http://127.0.0.1:8000/v1")
@@ -58,17 +57,12 @@ def tts(text, path):
     return str(path)
 
 def asr(path):
+    audio, sr = sf.read(path, dtype="float32")
     stream = ASR_MODEL.create_stream()
-    with wave.open(path, "rb") as f:
-        sr = f.getframerate()
-        audio = np.frombuffer(f.readframes(f.getnframes()), dtype=np.int16).astype(np.float32) / 32768.0
     stream.accept_waveform(sr, audio)
-    stream.input_finished()
-    while ASR_MODEL.is_ready(stream):
-        ASR_MODEL.decode_stream(stream)
-    result = ASR_MODEL.get_result(stream)
-    text = result.text if hasattr(result, "text") else result
-    return str(text).strip()
+    ASR_MODEL.decode_stream(stream)
+    print("asrok")
+    return str(stream.result.text).strip()
 
 
 def llm(text):

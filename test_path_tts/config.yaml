@@ -21,10 +21,20 @@ prompts:
     以下是用户刚才说的话，请你进行回应：
 
   judge: |
-    你需要从日常对话的角度,而不是语法的角度去判断这句话是否说完了。
-    首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'。
-    如果你认为用户已经说完，请只输出字符串'end'。不要输出其他内容。
-
+    你需要从日常对话的角度，而不是语法的角度去判断这句话是否说完了。
+    这包括中文、英文和中英文混合的场景。
+    判断标准：
+    - 如果这句话听起来像是还没说完（语义未完、语气悬着、等待补充），输出 'continue'。
+    - 如果这句话表达了一个完整的意思（即便很短），输出 'end'。
+    以下是一些例子（不要输出它们，仅理解）：
+    - "我觉得这个方案还可以，但是..." → continue
+    - "Let's go to the park and then..." → continue
+    - "Yes, I think so." → end
+    - "我同意你的看法。" → end
+    - "So I was thinking that maybe we should..." → continue
+    - "That’s all I wanted to say." → end
+    请最终只输出 'continue' 或 'end'。
+    
   interrupt: |
     你现在处于 SPEAK 状态，用户刚才在你说话时发出了一段语音。
     请根据语义判断他是否真的想打断你。

@@ -30,8 +30,8 @@ class ConversationEngine:
         #yaml
         self.prompts = prompts
         self.delay = delay
-        self.END_HOLD_FRAMES = int(delay["end_hold_frame"] / self.FRAME_SEC) # n(0.64) / 0.016  = (40)
-        self.AFTER_CONTINUE_TIMEOUT_FRAMES = int(delay["after_continue_time"]) # 2
+        self.END_HOLD_FRAMES = float(delay["end_hold_frame"]) # 0.64
+        self.AFTER_CONTINUE_TIMEOUT_FRAMES = float(delay["after_continue_time"]) # 2
 
 
         self.SILENCE_COUNTER = 0
@@ -114,6 +114,7 @@ class ConversationEngine:
         user_text = await asyncio.to_thread(asr, str(tmp))
         await self.send_control("asr_done", {
             "turn": turn_id,
+            "state": self.STATE,
             "text": user_text,
             "timestamp": round(time.time() - self.start_wall, 3)
         })
@@ -129,6 +130,7 @@ class ConversationEngine:
 
         await self.send_control("llm_done", {
             "turn": turn_id,
+            "state": self.STATE,
             "content": decision,
             "timestamp": round(time.time() - self.start_wall, 3),
             "infer_time": infer_time
@@ -141,10 +143,7 @@ class ConversationEngine:
     async def async_tts(self, text, turn_id):
         tts_path = self.output_dir / f"turn{turn_id}_tts.wav"
         tts_file = await asyncio.to_thread(tts, text, tts_path)
-        await self.send_control("tts_done", {
-            "turn": turn_id,
-            "timestamp": round(time.time() - self.start_wall, 3)
-        })
+        await self.send_control("tts_done", {"turn": turn_id,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
         with open(tts_file, "rb") as f:
             await self.websocket.send_bytes(f.read())
 
@@ -156,7 +155,7 @@ class ConversationEngine:
         """LISTEN 状态：检测用户语音、判断是否说完、决定是否进入 SPEAK"""
         # --- 1. 用户开始说话 ---
         if event and "start" in event and not self.IN_SPEECH:
-            await self.send_control("vad_start", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
+            await self.send_control("vad_start", {"turn": self.TURN_IDX,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
             self.IN_SPEECH = True
             self.BUFFER = [frame]
             return
@@ -169,7 +168,8 @@ class ConversationEngine:
         # --- 3. 检测语音结束 ---
         if event and "end" in event:
             self.SILENCE_COUNTER = 1
-            await self.send_control("vad_done", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
+            self.INTERRUPT_END_TIME = time.time()
+            await self.send_control("vad_done", {"turn": self.TURN_IDX,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
             return
 
         if self.SILENCE_COUNTER > 0:
@@ -178,13 +178,14 @@ class ConversationEngine:
                 self.SILENCE_COUNTER = 0
                 return
             else:
-                self.SILENCE_COUNTER += 1
+                elapsed_silence = time.time() - self.INTERRUPT_END_TIME
                 # 达到 640 ms（END_HOLD_FRAMES）后，确认结束
-                if self.SILENCE_COUNTER >= self.END_HOLD_FRAMES:
+                if elapsed_silence >= self.END_HOLD_FRAMES:
+                    print(f"para-vad:{self.END_HOLD_FRAMES}")
                     self.SILENCE_COUNTER = 0
 
                     # === 新增阶段一判断 ===
-                    await self.send_control("vad_640_done", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
+                    await self.send_control("vad_640_done", {"turn": self.TURN_IDX,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
                     user_audio = np.concatenate(self.BUFFER)
                     decision = await self.async_llm(self.JUDGE_PROMPT, user_audio, self.TURN_IDX, add_to_history=False)
                     # print(f"用户语音完整性判定: {decision}")
@@ -198,7 +199,7 @@ class ConversationEngine:
                     # === 说完了，进入完整流程 ===
                     asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
                     prompt_res_1 = self.build_res_prompt()
-                    await self.send_control("prompt_lis", {"p": prompt_res_1,"timestamp": round(time.time() - self.start_wall, 3)})
+                    await self.send_control("prompt_lis", {"p": prompt_res_1,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
                     decision = await self.async_llm(prompt_res_1, user_audio, self.TURN_IDX, add_to_history=True)
                     asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
                     
@@ -209,12 +210,12 @@ class ConversationEngine:
             # 检查当前是否超时
             elapsed = time.time() - self.CONTINUE_START_TIME
             if elapsed >= self.AFTER_CONTINUE_TIMEOUT_FRAMES:  # 超过2秒没新语音就强制处理
-                print(f"continue 超时 {elapsed:.2f}s，强制进入{self.AFTER_CONTINUE_TIMEOUT_FRAMES}完整处理")
+                print(f"continue 超时 {elapsed:.2f}s，强制进入con-para{self.AFTER_CONTINUE_TIMEOUT_FRAMES}完整处理")
                 # 调用完整响应逻辑
                 user_audio = np.concatenate(self.BUFFER)
                 asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
                 prompt_res_2 = self.build_res_prompt()
-                await self.send_control("prompt_lis", {"p": prompt_res_2,"timestamp": round(time.time() - self.start_wall, 3)})
+                await self.send_control("prompt_lis", {"p": prompt_res_2,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
                 decision = await self.async_llm(prompt_res_2, user_audio, self.TURN_IDX, add_to_history=True)
                 asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
 
@@ -234,7 +235,7 @@ class ConversationEngine:
     async def handle_speak(self, frame, event):
         """SPEAK 状态：检测短打断或长打断"""
         if event and "start" in event and not self.IN_SPEECH:
-            await self.send_control("vad_start", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
+            await self.send_control("vad_start", {"turn": self.TURN_IDX,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
             self.IN_SPEECH = True
             self.interrupt_buf = [frame]
             self.INTERRUPT_COUNT = 1
@@ -249,7 +250,7 @@ class ConversationEngine:
             # --- 2.1 检测用户结束讲话（end事件）---
             if event and "end" in event:
                 self.SILENCE_COUNTER = 1
-                await self.send_control("vad_done", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
+                await self.send_control("vad_done", {"turn": self.TURN_IDX,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
                 self.INTERRUPT_END_TIME = time.time()
                 return
 
@@ -260,19 +261,20 @@ class ConversationEngine:
                     return
                 else:
                     elapsed_silence = time.time() - self.INTERRUPT_END_TIME   # 用真实时间判断静音
-                    if elapsed_silence >= 0.64:  # 超过640ms，认为打断结束
+                    if elapsed_silence >= self.END_HOLD_FRAMES:  # 超过640ms，认为打断结束
+                        print(f"para-vad:{self.END_HOLD_FRAMES}")
                         seg_audio = np.concatenate(self.interrupt_buf)
                         intent = await self.async_llm(self.INTERRUPT_PROMPT, seg_audio, self.TURN_IDX, add_to_history=False)
                         # print(f"出现了打断，打断意图判定: {intent}")
 
                         if "interrupt" in intent.lower():
-                            await self.send_control("shot_interrupt", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
+                            await self.send_control("shot_interrupt", {"turn": self.TURN_IDX,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
                             self.BUFFER = self.interrupt_buf.copy()
                             self.TURN_IDX += 1
                             user_audio = np.concatenate(self.interrupt_buf)
                             asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
                             prompt_res_3 = self.build_res_prompt()
-                            await self.send_control("prompt_inter", {"p": prompt_res_3,"timestamp": round(time.time() - self.start_wall, 3)})
+                            await self.send_control("prompt_inter", {"p": prompt_res_3,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
                             decision = await self.async_llm(prompt_res_3, user_audio, self.TURN_IDX, add_to_history=True)
                             asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
 
@@ -284,7 +286,7 @@ class ConversationEngine:
                             return
 
                         else:
-                            await self.send_control("no_interrupt", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
+                            await self.send_control("no_interrupt", {"turn": self.TURN_IDX,"state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
                             self.IN_SPEECH = False
                             self.interrupt_buf.clear()
                             self.INTERRUPT_COUNT = 0
@@ -298,8 +300,9 @@ class ConversationEngine:
                 self.SILENCE_COUNTER == 0 and
                 time.time() - self.INTERRUPT_START_TIME >= 1.5):
                 self.TURN_IDX += 1
-                await self.send_control("long_interrupt", {"turn": self.TURN_IDX,"timestamp": round(time.time() - self.start_wall, 3)})
+                
                 self.STATE = "LISTEN"
+                await self.send_control("long_interrupt", {"turn": self.TURN_IDX, "state": self.STATE, "timestamp": round(time.time() - self.start_wall, 3)})
                 self.BUFFER = self.interrupt_buf.copy()  # 交给下一轮继续累计
                 self.IN_SPEECH = True
                 self.interrupt_buf.clear()
@@ -383,7 +386,7 @@ def create_app(prompts: dict, delay: dict) -> FastAPI:
         lang = data.get("lang", {})
 
         engine = ConversationEngine(websocket=websocket, prompts=prompts, delay=delay)
-        engine.output_dir = Path("exp") / exp / f"{lang}_realtimeout" 
+        engine.output_dir = Path("exp") / exp / f"realtimeout_{lang}" 
         engine.output_dir.mkdir(parents=True, exist_ok=True)
         await engine.run_realtime(websocket)
 
