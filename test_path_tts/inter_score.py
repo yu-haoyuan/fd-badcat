@@ -2,6 +2,7 @@ import subprocess
 from pathlib import Path
 import sys
 import argparse
+import yaml
 sys.path.append(str(Path(__file__).resolve().parent.parent))
 # 关于首帧延迟，interrupt和reject的Third-party_Speech_after,talk_to_others,Pause_Handling
 # 一样，可以复用Third-party_Speech_before User_Real-time_Backchannels这两个需要单独拉出来
@@ -183,11 +184,15 @@ def run_get_sdao_eval(get_eval_dir: Path, eval_output_dir: Path):
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--exp", type=str, default="exp4")
-
+    parser.add_argument("--config", type=str, default="test_path_tts/config.yaml")
     args = parser.parse_args()
-    
-    score_root = Path(f"exp/{args.exp}/score")
+
+    with open(args.config, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    client_cfg = cfg.get("client", {})
+    exp = client_cfg.get("exp", {})
+
+    score_root = Path(f"exp/{exp}/score")
     langs = ["en", "cn"]
 
     existing_by_lang = {}
@@ -201,7 +206,7 @@ def main():
     # 用 set 去重，避免中英文重复加入相同类名
     complete = set()
     for dev in ["dev_zh", "dev_en"]:
-        root = Path(f"exp/{args.exp}/{dev}")
+        root = Path(f"exp/{exp}/{dev}")
         if not root.exists():
             print(f"跳过不存在的目录: {root}")
             continue
@@ -236,8 +241,8 @@ def main():
         for category in filtered:
         #---------特殊-reject-----------------------------------
             if category == "Pause Handling":
-                trans_dir_rej_ph = Path(f"exp/{args.exp}/{dev_name}/{category}")
-                rej_ph_rr_dir = Path(f"exp/{args.exp}/score/{lang}/{category}")
+                trans_dir_rej_ph = Path(f"exp/{exp}/{dev_name}/{category}")
+                rej_ph_rr_dir = Path(f"exp/{exp}/score/{lang}/{category}")
                 rej_ph_rr_dir.mkdir(parents=True, exist_ok=True)
 
                 run_get_trans(trans_dir_rej_ph, lang) #复用evaluation/get_transcript/infer_cn_en.py
@@ -246,8 +251,8 @@ def main():
 
 
             elif category == "Third-party Speech_before":
-                trans_dir_rej_tpsb = Path(f"exp/{args.exp}/{dev_name}/{category}")
-                rej_tpsb_rr_dir = Path(f"exp/{args.exp}/score/{lang}/{category}")
+                trans_dir_rej_tpsb = Path(f"exp/{exp}/{dev_name}/{category}")
+                rej_tpsb_rr_dir = Path(f"exp/{exp}/score/{lang}/{category}")
                 rej_tpsb_rr_dir.mkdir(parents=True, exist_ok=True)
 
                 run_get_trans(trans_dir_rej_tpsb, lang)  #复用evaluation/get_transcript/infer_cn_en.py
@@ -258,9 +263,9 @@ def main():
                 
         #---------------resume-----------------------------
             elif category == "Speech_Directe at Others":
-                trans_dir_rej_sdao = Path(f"exp/{args.exp}/{dev_name}/{category}")
-                trans_dir_rej_sdao_eval = Path(f"exp/{args.exp}/{dev_name}/{category}_eval")
-                rej_sdao_rr_dir = Path(f"exp/{args.exp}/score/{lang}/{category}")
+                trans_dir_rej_sdao = Path(f"exp/{exp}/{dev_name}/{category}")
+                trans_dir_rej_sdao_eval = Path(f"exp/{exp}/{dev_name}/{category}_eval")
+                rej_sdao_rr_dir = Path(f"exp/{exp}/score/{lang}/{category}")
                 rej_sdao_rr_dir.mkdir(parents=True, exist_ok=True)
 
                 run_get_trans(trans_dir_rej_sdao, lang) #复用evaluation/get_transcript/infer_cn_en.py
@@ -272,8 +277,8 @@ def main():
 
 
             elif category == "Third-party Speech after":
-                trans_dir_rej_tpsa = Path(f"exp/{args.exp}/{dev_name}/{category}")
-                rej_tpsa_rr_dir = Path(f"exp/{args.exp}/score/{lang}/{category}")
+                trans_dir_rej_tpsa = Path(f"exp/{exp}/{dev_name}/{category}")
+                rej_tpsa_rr_dir = Path(f"exp/{exp}/score/{lang}/{category}")
                 rej_tpsa_rr_dir.mkdir(parents=True, exist_ok=True)
 
                 run_get_trans(trans_dir_rej_tpsa, lang) #复用evaluation/get_transcript/infer_cn_en.py
@@ -281,8 +286,8 @@ def main():
                 run_get_ftd(trans_dir_rej_tpsa, rej_tpsa_rr_dir) #ftd可复用interrupt
 
             elif category == "User Real-time Backchannels":
-                trans_dir_rej_bc = Path(f"exp/{args.exp}/{dev_name}/{category}")
-                rej_bc_rr_dir = Path(f"exp/{args.exp}/score/{lang}/{category}")
+                trans_dir_rej_bc = Path(f"exp/{exp}/{dev_name}/{category}")
+                rej_bc_rr_dir = Path(f"exp/{exp}/score/{lang}/{category}")
                 rej_bc_rr_dir.mkdir(parents=True, exist_ok=True)
 
                 run_get_trans(trans_dir_rej_bc, lang) #复用evaluation/get_transcript/infer_cn_en.py
@@ -294,14 +299,14 @@ def main():
         #----------interrupt-----------------------------------
             else:
                 #inter delay score
-                time_file_dir = Path(f"exp/{args.exp}/{dev_name}/{category}")
-                time_out_dir = Path(f"exp/{args.exp}/score/{lang}/{category}")
+                time_file_dir = Path(f"exp/{exp}/{dev_name}/{category}")
+                time_out_dir = Path(f"exp/{exp}/score/{lang}/{category}")
                 time_out_dir.mkdir(parents=True, exist_ok=True)
 
                 run_get_timing(time_file_dir, time_out_dir)
 
                 #inter transcript
-                trans_dir_int = Path(f"exp/{args.exp}/{dev_name}/{category}")
+                trans_dir_int = Path(f"exp/{exp}/{dev_name}/{category}")
                 run_get_trans(trans_dir_int, lang)
 
                 #inter eval score

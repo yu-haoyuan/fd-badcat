@@ -20,7 +20,7 @@ import numpy as np
 import soundfile as sf
 import websockets
 from tqdm import tqdm
-
+import yaml
 # ========== 基本配置 ==========
 WS_URL = None
 SAMPLE_RATE = 16000
@@ -125,7 +125,7 @@ async def mic_sender(ws, wav_path: Path, *, log=print):
 
 
 # ---------------- 单文件前端模拟 ----------------
-async def simulate_full_frontend(wav_path: Path, *, log=print):
+async def simulate_full_frontend(wav_path: Path, *, log=print, lang, exp):
     """
     单个文件的前端模拟
     依赖：
@@ -141,6 +141,11 @@ async def simulate_full_frontend(wav_path: Path, *, log=print):
 
     async with websockets.connect(WS_URL, max_size=None) as ws:
         log(f"已连接后端: {WS_URL}")
+        await ws.send(json.dumps({
+            "event": "config",
+            "data": {"lang": lang,
+                     "exp": exp }
+        }))
         speaker = SpeakerSimulator(total_duration, sr=sr, output_path=output_path, log=log)
         last_tts_timestamp = None
 
@@ -198,65 +203,76 @@ async def simulate_full_frontend(wav_path: Path, *, log=print):
 
 
 async def main():
-
     global WS_URL
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=18000)
-    parser.add_argument("--exp", type=str, default="exp4")
-    parser.add_argument("--lang", type=str, default="zh")
+    parser.add_argument("--config", type=str, default="test_path_tts/config.yaml", help="YAML配置文件路径")
     args = parser.parse_args()
 
-    WS_URL = f"ws://127.0.0.1:{args.port}/realtime"
-    base_dir = Path(f"exp/{args.exp}/dev_{args.lang}")
-    log_base = Path(f"exp/{args.lang}_{args.exp}_log")  # 日志基名（会自动切分为 _1.txt, _2.txt ...）
+    # 读取 YAML 配置
+    with open(args.config, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
 
-#  exp // lang // log
-    log_base.parent.mkdir(parents=True, exist_ok=True)
+    client_cfg = cfg.get("client", {})
 
-    read_all_subdirs = True    # False 时只读取 target_subdir
-    max_files = None           # None 表示全部
-    target_subdir = "Repetition Requests"
+    lang = client_cfg.get("lang", {})
+    exp = client_cfg.get("exp", {})
+    port = client_cfg.get("port", {})
 
-    logger = RotatingLogger(log_base)
-    log = logger.log  # 将实例方法作为回调传给子函数
-    log("========== 前端模拟开始 ==========")
+    WS_URL = f"ws://127.0.0.1:{port}/realtime"
 
-    if read_all_subdirs:
-        dirs = [d for d in base_dir.iterdir() if d.is_dir()]
+    if lang == "zhen":
+        langs = ["zh", "en"]
     else:
-        dirs = [base_dir / target_subdir]
+        langs = [lang]
 
-    for subdir in tqdm(sorted(dirs), desc="目录进度", ncols=80):
-        log(f"\n进入目录: {subdir.name}")
-        all_wavs = list(subdir.glob("*.wav"))
-        wav_files = [f for f in all_wavs if not f.name.endswith("_output.wav")]
-        wav_files = sorted(wav_files)
+    for cur_lang in langs:
+        base_dir = Path(f"exp/{exp}/dev_{cur_lang}")
+        log_base = Path(f"exp/{exp}/{exp}_lg_{cur_lang}")
+        log_base.parent.mkdir(parents=True, exist_ok=True)
 
-        if max_files:
-            wav_files = wav_files[:max_files]
-        if not wav_files:
-            log(f"{subdir.name} 下没有可处理的 wav 文件")
-            continue
+        logger = RotatingLogger(log_base)
+        log = logger.log
+        log(f"========== 前端模拟开始 ({cur_lang}) ==========")
 
-        for wav_path in tqdm(wav_files, desc=subdir.name, ncols=80):
-            output_path = wav_path.with_name(wav_path.stem + "_output.wav")
+        read_all_subdirs = True
+        max_files = None
+        target_subdir = "Repetition Requests"
 
-            # 断点重传逻辑
-            if output_path.exists():
-                log(f"跳过已处理文件: {wav_path.name}")
+        if read_all_subdirs:
+            dirs = [d for d in base_dir.iterdir() if d.is_dir()]
+        else:
+            dirs = [base_dir / target_subdir]
+
+        for subdir in tqdm(sorted(dirs), desc=f"{cur_lang} 目录进度", ncols=80):
+            log(f"\n进入目录: {subdir.name}")
+            all_wavs = list(subdir.glob("*.wav"))
+            wav_files = [f for f in all_wavs if not f.name.endswith("_output.wav")]
+            wav_files = sorted(wav_files)
+
+            if max_files:
+                wav_files = wav_files[:max_files]
+            if not wav_files:
+                log(f"{subdir.name} 下没有可处理的 wav 文件")
                 continue
 
-            log(f"开始处理文件: {wav_path.name}")
-            try:
-                await simulate_full_frontend(wav_path, log=log)
-                log(f"处理完成: {wav_path.name}")
-            except Exception as e:
-                log(f"处理 {wav_path.name} 出错: {e}")
+            for wav_path in tqdm(wav_files, desc=subdir.name, ncols=80):
+                output_path = wav_path.with_name(wav_path.stem + "_output.wav")
 
-            log("-----------------------------------")
+                if output_path.exists():
+                    log(f"跳过已处理文件: {wav_path.name}")
+                    continue
 
-    log("========== 全部处理完成 ==========")
+                log(f"开始处理文件: {wav_path.name}")
+                try:
+                    await simulate_full_frontend(wav_path, log=log, lang=cur_lang, exp=exp)
+                    log(f"处理完成: {wav_path.name}")
+                except Exception as e:
+                    log(f"处理 {wav_path.name} 出错: {e}")
 
+                log("-----------------------------------")
+
+        log(f"========== 全部处理完成 ({cur_lang}) ==========")
 
 # ---------------- 入口 ----------------
 if __name__ == "__main__":

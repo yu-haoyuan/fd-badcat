@@ -13,27 +13,31 @@ import yaml
 # ============================================================
 
 class ConversationEngine:
-    def __init__(self, sample_rate=16000, window_size=256, websocket: WebSocket = None, prompts: dict = None):
+    def __init__(self, websocket: WebSocket = None, prompts: dict = None, delay: dict = None):
 
-        self.SAMPLE_RATE = sample_rate
-        self.WINDOW_SIZE = window_size
-        self.FRAME_SEC = window_size / sample_rate
-        self.INTERRUPT_LIMIT = int(1.5 / self.FRAME_SEC)    #speak打断硬时间，可以改
+        self.SAMPLE_RATE = 16000
+        self.WINDOW_SIZE = 256
+        self.FRAME_SEC = 256 / 16000 # 256/16000 = 0.016
 
         self.STATE = "LISTEN"
         self.IN_SPEECH = False
         self.BUFFER = []
         self.TURN_IDX = 0
-        # self.MEDIA_TIME = 0.0
         self.FRAME_IDX = 0
         self.CURRENT_TURN = None
         self.INTERRUPT_COUNT = 0
-        self.FILE_NAME = "stream"
-        self.END_HOLD_FRAMES = int(0.64 / self.FRAME_SEC)
+
+        #yaml
+        self.prompts = prompts
+        self.delay = delay
+        self.END_HOLD_FRAMES = int(delay["end_hold_frame"] / self.FRAME_SEC) # n(0.64) / 0.016  = (40)
+        self.AFTER_CONTINUE_TIMEOUT_FRAMES = int(delay["after_continue_time"]) # 2
+
+
         self.SILENCE_COUNTER = 0
         self.CONTINUE_INFER_TIMES = []
         self.CONTINUE_START_TIME = None
-        self.AFTER_CONTINUE_TIMEOUT_FRAMES = max(1, int(round(2.0 / self.FRAME_SEC)))
+
         self.CONTINUE_ARMED = False
         self.FROM_INTERRUPT = False
         self.history = []
@@ -41,16 +45,28 @@ class ConversationEngine:
         self.INTERRUPT_START_TIME = 0
 
         self.output_dir = None
-        # self.output_dir.mkdir(parents=True, exist_ok=True)
 
         self.vad_model = load_silero_vad()
         self.vad_iterator = VADIterator(self.vad_model, sampling_rate=self.SAMPLE_RATE)
         self.websocket = websocket  # ✅ 保存 websocket 引用用于事件推送
 
         #prompt
-        self.prompts = prompts or {}
-        self.JUDGE_PROMPT = self.prompts.get("judge", None)
-        self.INTERRUPT_PROMPT = self.prompts.get("interrupt", None)
+        self.JUDGE_PROMPT = prompts.get("judge", None)
+        self.INTERRUPT_PROMPT = prompts.get("interrupt", None)
+
+
+    def build_res_prompt(self):
+        """动态构造RES_PROMPT，包含最新history"""
+        base = self.prompts.get("response_template", None)
+        base.replace("{history}", json.dumps(self.history, ensure_ascii=False))
+        # fallback:
+        return (
+            "你是一个自然聊天的语音助手，要像朋友一样回答用户的问题\n"
+            "不要反问，也不要解释，不要输出任何格式说明，必须根据你听到的语言回答对应的语言，只有中文or英文\n"
+            f"只有用户提到“重复”“重新”，才需要参考历史信息{self.history}进行重复回答，否则不要关注历史信息\n"
+            "如果用户提到“如果”“怎么办”“不行”等假设性或否定性内容，请回答当下问题，不要参考历史信息。"
+            "以下是用户刚才说的话，请你进行回应："
+        )
 
     def reset(self):
         self.STATE = "LISTEN"
@@ -69,19 +85,7 @@ class ConversationEngine:
         self.FROM_INTERRUPT = False
         self.interrupt_buf.clear()
 
-    def build_res_prompt(self):
-        """动态构造RES_PROMPT，包含最新history"""
-        base = self.prompts.get("response_template", None)
-        if base:
-            return base.replace("{history}", json.dumps(self.history, ensure_ascii=False))
-        # fallback:
-        return (
-            "你是一个自然聊天的语音助手，要像朋友一样回答用户的问题\n"
-            "不要反问，也不要解释，不要输出任何格式说明，必须根据你听到的语言回答对应的语言，只有中文or英文\n"
-            f"只有用户提到“重复”“重新”，才需要参考历史信息{self.history}进行重复回答，否则不要关注历史信息\n"
-            "如果用户提到“如果”“怎么办”“不行”等假设性或否定性内容，请回答当下问题，不要参考历史信息。"
-            "以下是用户刚才说的话，请你进行回应："
-        )
+
 
 
     async def send_control(self, event_type: str, data=None):
@@ -105,7 +109,7 @@ class ConversationEngine:
 
     async def async_asr(self, user_audio, turn_id):
         """异步ASR任务：仅做文本转写与历史更新，不参与当前逻辑"""
-        tmp = self.output_dir / f"{self.FILE_NAME}_turn{turn_id}_input.wav"
+        tmp = self.output_dir / f"stream_turn{turn_id}_input.wav"
         sf.write(tmp, user_audio, self.SAMPLE_RATE)
         user_text = await asyncio.to_thread(asr, str(tmp))
         await self.send_control("asr_done", {
@@ -204,8 +208,8 @@ class ConversationEngine:
         if self.CONTINUE_ARMED:
             # 检查当前是否超时
             elapsed = time.time() - self.CONTINUE_START_TIME
-            if elapsed >= 2.0:  # 超过2秒没新语音就强制处理
-                # print(f"⚠️ continue 超时 {elapsed:.2f}s，强制进入完整处理")
+            if elapsed >= self.AFTER_CONTINUE_TIMEOUT_FRAMES:  # 超过2秒没新语音就强制处理
+                print(f"continue 超时 {elapsed:.2f}s，强制进入{self.AFTER_CONTINUE_TIMEOUT_FRAMES}完整处理")
                 # 调用完整响应逻辑
                 user_audio = np.concatenate(self.BUFFER)
                 asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
@@ -308,7 +312,7 @@ class ConversationEngine:
 
 
     async def run_realtime(self, websocket: WebSocket):
-        await websocket.accept()
+        # await websocket.accept()
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         print(f"[{now}] ✅ 前端已连接，进入实时会话循环")
         self.start_wall = time.time() #是否要初始化？是否需要reset？
@@ -341,8 +345,6 @@ class ConversationEngine:
                     frame = np.frombuffer(raw_bytes, dtype=np.float32)
                     if frame.size == 0:
                         continue
-
-                    # self.MEDIA_TIME += self.FRAME_SEC
                     self.FRAME_IDX += 1
 
                     event = self.detect_vad_frame(frame)
@@ -369,13 +371,19 @@ class ConversationEngine:
 # FastAPI 应用
 # ============================================================
 
-def create_app(output_dir: str, prompts: dict) -> FastAPI:
+def create_app(prompts: dict, delay: dict) -> FastAPI:
     app = FastAPI()
     @app.websocket("/realtime")
     async def realtime_ws(websocket: WebSocket):
         # ✅ 把 prompts 传给 ConversationEngine
-        engine = ConversationEngine(websocket=websocket, prompts=prompts)
-        engine.output_dir = Path("exp") / output_dir
+        await websocket.accept()
+        msg = await websocket.receive_json()
+        data = msg.get("data", {})
+        exp = data.get("exp", {})
+        lang = data.get("lang", {})
+
+        engine = ConversationEngine(websocket=websocket, prompts=prompts, delay=delay)
+        engine.output_dir = Path("exp") / exp / f"{lang}_realtimeout" 
         engine.output_dir.mkdir(parents=True, exist_ok=True)
         await engine.run_realtime(websocket)
 
@@ -383,7 +391,7 @@ def create_app(output_dir: str, prompts: dict) -> FastAPI:
 
 def main():
     parser = argparse.ArgumentParser(description="Realtime Voice WS Server")
-    parser.add_argument("--config", type=str, default="test_path_tts/config_cn.yaml", help="YAML配置文件路径")
+    parser.add_argument("--config", type=str, default="test_path_tts/config.yaml", help="YAML配置文件路径")
     # parser.add_argument("--medium", type=str, default="realtime_out1",help="中间结果输出目录 (默认: realtime_out1)")
     # parser.add_argument("--host", default="0.0.0.0", help="Bind host")
     # parser.add_argument("--port", type=int, default=18000, help="Bind port")
@@ -395,12 +403,12 @@ def main():
     server_cfg = cfg.get("server", {})
     prompts_cfg = cfg.get("prompts", {})
 
-    medium = server_cfg.get("medium", "realtime_out1")
-    host = server_cfg.get("host", "0.0.0.0")
-    port = server_cfg.get("port", 18000)
+    host = server_cfg.get("host", {})
+    port = server_cfg.get("port", {})
+    delay = server_cfg.get("time", {})
 
 
-    app = create_app(medium, prompts_cfg)
+    app = create_app(prompts_cfg, delay)
     uvicorn.run(app, host=host, port=port)
 
 if __name__ == "__main__":

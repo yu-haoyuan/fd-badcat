@@ -2,7 +2,7 @@ import json
 import argparse
 from pathlib import Path
 from statistics import mean
-
+import yaml
 def safe_read_json(path: Path):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -167,7 +167,12 @@ def compute_final(exp):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="统计各类别 all.json 的平均值并汇总")
-    parser.add_argument("--exp", type=str, required=True, help="实验名称，例如 exp4")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default="test_path_tts/config.yaml")
     args = parser.parse_args()
-    compute_final(args.exp)
+
+    with open(args.config, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    client_cfg = cfg.get("client", {})
+    exp = client_cfg.get("exp", {})
+    compute_final(exp)

@@ -1,12 +1,15 @@
 server:
-  medium: "realtime_out1"
   host: "0.0.0.0"
   port: 18000
+  time: 
+    after_continue_time: 1
+    end_hold_frame: 0.64
+
 
 client:
   port: 18000
-  exp: "exp4"
-  lang: "zh"
+  exp: "exp5"
+  lang: "zhen" #'zh' 'en' 'zhen'
 
 prompts:
   response_template: |

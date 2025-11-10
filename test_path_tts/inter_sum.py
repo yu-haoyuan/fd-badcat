@@ -2,7 +2,7 @@ import json
 import argparse
 from pathlib import Path
 from collections import Counter
-
+import yaml
 
 # ===============================
 # 工具函数
@@ -184,13 +184,16 @@ def calculate_average_of_keys(exp: str, categories: list, lang: str):
 # ===============================
 
 def main():
-    parser = argparse.ArgumentParser(description="处理多语言多类别得分文件夹")
-    parser.add_argument("--exp", type=str, required=True, help="实验名称，例如 exp3 或 exp4")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=str, default="test_path_tts/config.yaml")
     args = parser.parse_args()
 
-    exp = args.exp
-    langs = ["cn", "en"]
+    with open(args.config, "r", encoding="utf-8") as f:
+        cfg = yaml.safe_load(f)
+    client_cfg = cfg["client"]    
+    exp = client_cfg.get("exp", {})
 
+    langs = ["cn", "en"]
     interrupt_cata = [
         "Follow-up Questions",
         "Negation or Dissatisfaction",

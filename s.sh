@@ -1,1 +1,0 @@
-CUDA_VISIBLE_DEVICES=5 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.550.54.14:/usr/lib/x86_64-linux-gnu/libcuda.so.550.54.14 python model/index-tts-vllm/api_server.py
