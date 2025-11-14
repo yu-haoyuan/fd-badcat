@@ -61,41 +61,9 @@ def asr(path):
     return str(stream.result.text).strip()
 
 
-def llm_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000):
-    """
-    调用 Qwen3-Omni 多模态接口。
-    参数：
-        prompt: 用户的文本提示（必须）
-        audio_array: 可选的音频 ndarray(float32)，范围[-1, 1]
-        sr: 采样率，默认 16000
-    返回：
-        Qwen 返回的文本字符串
-    """
-    # messages = [{"role": "system", "content": "你是一个语音客服,你要没有任何格式的在50字10s左右回答用户"}]
-    messages = [{"role": "system", "content": "你是原神的胡桃，帮助用户了解提瓦特大陆，根据用户语言决定你回答的语言，用户语言是中文的时候，回答中文，用户语言是英文的时候，回答英文"}]
-
-    # 如果包含音频，构造音频+文本混合输入
-    if audio_array is not None:
-        try:
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tmpfile:
-                sf.write(tmpfile.name, audio_array, sr)
-                tmpfile.seek(0)
-                audio_base64 = base64.b64encode(tmpfile.read()).decode("utf-8")
-            messages.append({
-                "role": "user",
-                "content": [
-                    {"type": "audio_url", "audio_url": {"url": f"data:audio/wav;base64,{audio_base64}"}},
-                    {"type": "text", "text": prompt}
-                ]
-            })
-        except Exception as e:
-            print(f"[QWEN AUDIO ENCODE ERROR] {e}")
-            return ""
-    else:
-        messages.append({"role": "user", "content": [{"type": "text", "text": prompt}]})
-
+def llm_qwen3o(messages: list):
     payload = {
-        "temperature": 1.0,
+        "temperature": 0,
         "top_p": 0.7,
         "top_k": 40,
         "presence_penalty": 1.2,
@@ -113,9 +81,10 @@ def llm_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000):
             timeout=300
         )
         response.raise_for_status()
+
         data = response.json()
-        content = data["choices"][0]["message"]["content"]
-        return content
+        return data["choices"][0]["message"]["content"]
+
     except Exception as e:
         print(f"[QWEN REQUEST ERROR] {e}")
         return ""

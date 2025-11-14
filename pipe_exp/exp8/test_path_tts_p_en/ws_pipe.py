@@ -59,13 +59,13 @@ class ConversationEngine:
         """动态构造RES_PROMPT，包含最新history"""
         base = self.prompts.get("response_template", None)
         if base:
-            base = base.replace("{history}", json.dumps(self.history[-2:], ensure_ascii=False))
+            base = base.replace("{history}", json.dumps(self.history, ensure_ascii=False))
             return base
         else:
             return (
                 "你是一个自然聊天的语音助手，要像朋友一样回答用户的问题\n"
                 "不要反问，也不要解释，不要输出任何格式说明，必须根据你听到的语言回答对应的语言，只有中文or英文\n"
-                f"只有用户提到“重复”“重新”，才需要参考历史信息{self.history}进行重复回答，否则不要关注历史信息\n"
+                f"只有用户提到“重复”“重新”，才需要参考历史信息{self.history[-2:]}进行重复回答，否则不要关注历史信息\n"
                 "如果用户提到“如果”“怎么办”“不行”等假设性或否定性内容，请回答当下问题，不要参考历史信息。"
                 "以下是用户刚才说的话，请你进行回应："
             )
@@ -383,7 +383,7 @@ def create_app(prompts: dict, delay: dict) -> FastAPI:
         lang = data.get("lang", {})
 
         engine = ConversationEngine(websocket=websocket, prompts=prompts, delay=delay)
-        engine.output_dir = Path("exp") / exp / f"realtimeout_{lang}" 
+        engine.output_dir = Path("exp") / exp / f"prealtimeout_{lang}" 
         engine.output_dir.mkdir(parents=True, exist_ok=True)
         await engine.run_realtime(websocket)
 
@@ -391,7 +391,7 @@ def create_app(prompts: dict, delay: dict) -> FastAPI:
 
 def main():
     parser = argparse.ArgumentParser(description="Realtime Voice WS Server")
-    parser.add_argument("--config", type=str, default="test_path_tts/config.yaml", help="YAML配置文件路径")
+    parser.add_argument("--config", type=str, default="test_path_tts_p/config.yaml", help="YAML配置文件路径")
     # parser.add_argument("--medium", type=str, default="realtime_out1",help="中间结果输出目录 (默认: realtime_out1)")
     # parser.add_argument("--host", default="0.0.0.0", help="Bind host")
     # parser.add_argument("--port", type=int, default=18000, help="Bind port")

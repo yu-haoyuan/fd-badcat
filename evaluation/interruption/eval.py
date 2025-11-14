@@ -206,7 +206,7 @@ def eval_behavior_all(data_dir, client, task, output_dir):
         for prefix, result in output_list:
             # 创建新的条目格式
             entry = {
-                "key": f"Follow-up Questions_{prefix}", #不同子任务的key
+                "key": f"{data_dir.stem}_{prefix}", #不同子任务的key
                 "behaviour": result.get("behaviour", [])
             }
             # 写入一行JSON

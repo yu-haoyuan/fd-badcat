@@ -59,7 +59,7 @@ class ConversationEngine:
         """动态构造RES_PROMPT，包含最新history"""
         base = self.prompts.get("response_template", None)
         if base:
-            base = base.replace("{history}", json.dumps(self.history[-2:], ensure_ascii=False))
+            base = base.replace("{history}", json.dumps(self.history, ensure_ascii=False))
             return base
         else:
             return (
@@ -383,7 +383,7 @@ def create_app(prompts: dict, delay: dict) -> FastAPI:
         lang = data.get("lang", {})
 
         engine = ConversationEngine(websocket=websocket, prompts=prompts, delay=delay)
-        engine.output_dir = Path("exp") / exp / f"realtimeout_{lang}" 
+        engine.output_dir = Path("exp") / exp / f"prealtimeout_{lang}" 
         engine.output_dir.mkdir(parents=True, exist_ok=True)
         await engine.run_realtime(websocket)
 

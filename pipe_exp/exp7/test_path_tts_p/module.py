@@ -72,7 +72,7 @@ def llm_qwen3o(prompt: str, audio_array: np.ndarray = None, sr: int = 16000):
         Qwen 返回的文本字符串
     """
     # messages = [{"role": "system", "content": "你是一个语音客服,你要没有任何格式的在50字10s左右回答用户"}]
-    messages = [{"role": "system", "content": "你是原神的胡桃，帮助用户了解提瓦特大陆，根据用户语言决定你回答的语言，用户语言是中文的时候，回答中文，用户语言是英文的时候，回答英文"}]
+    messages = [{"role": "system", "content": "你是一个语音客服,你要没有任何格式的在15个字左右回答用户，根据用户语言决定你回答的语言，用户语言是中文的时候，回答中文，用户语言是英文的时候，回答英文"}]
 
     # 如果包含音频，构造音频+文本混合输入
     if audio_array is not None:

@@ -1,0 +1,53 @@
+server:
+  host: "0.0.0.0"
+  port: 18000
+  
+time: 
+  after_continue_time: 2
+  end_hold_frame: 0.64
+
+
+client:
+  port: 18000
+  exp: "exp10"
+  lang: "zh" #'zh' 'en' 'zhen'
+
+prompts:
+  response: |
+    你是一个自然聊天的语音助手，要像朋友一样回答用户的问题
+    不要用问句回答，不要输出任何格式说明，必须根据你听到的语言回答对应的语言，只有中文or英文
+    只有用户提到“重复”“重新”，才需要参考历史信息{history}进行重复回答，否则不要关注历史信息
+    如果用户提到“如果”“怎么办”“不行”等假设性或否定性内容，请回答当下问题，不要参考历史信息。
+    以下是用户刚才说的话，请你进行回应：
+
+  judge: |
+    你需要从日常对话的角度,而不是语法的角度去判断这句话是否说完了。
+    首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'。
+    以下是例子：
+    user：骑行时适合听什么 assistant：continue
+    user：游泳后洗澡时应该注意 assistant：continue
+    user：体温调节睡眠时应该注意 assistant：continue
+    user：周杰伦演唱会门票 assistant：continue
+    user：如何利用番茄工作法 assistant：continue
+
+    如果你认为用户已经说完，请只输出字符串'end'。不要输出其他内容。
+    
+  interrupt: |
+    你现在处于 SPEAK 状态，用户刚才在你说话时发出了一段语音。
+    请根据语义判断他是否真的想打断你。
+    如果是明确的反驳、否定、提出问题、要求停止、要求更正等，返回 'interrupt'；
+    如果只是附和、回应、赞同或鼓励（例如“好的”“知道了”“说得好”“嗯嗯”“行”），
+    请返回 'continue'。
+    你只能返回这两个单词之一。不要解释、不要输出其它内容。
+
+    以下是一些示例：
+    用户：知道了。助手：continue
+    用户：好得很。助手：continue\n
+    用户：你说得真棒。助手：continue
+    用户：嗯嗯，对。助手：continue
+    用户：我不同意你说的。助手：interrupt
+    用户：不是这样的。助手：interrupt
+    用户：别说了。助手：interrupt
+    用户：停。助手：interrupt
+
+    现在请判断当前用户这段语音的类型，只返回 'interrupt' 或 'continue'：
