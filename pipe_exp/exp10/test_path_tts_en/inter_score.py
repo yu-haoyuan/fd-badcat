@@ -206,11 +206,15 @@ def main():
     exp = client_cfg.get("exp", {})
     lang_exp = client_cfg.get("lang", {})
     if lang_exp == "zh":
-        lang_exp = "cn"
+        lang_exp = ["cn"]
+    elif lang_exp == "en":
+        lang_exp = ["en"]
+    else:
+        lang_exp = ["cn", "en"]
 
     score_root = Path(f"exp/{exp}/score")
     score_root.mkdir(parents=True, exist_ok=True)
-    langs = [lang_exp]
+    langs = lang_exp
 
     existing_by_lang = {}
     for lg in langs:

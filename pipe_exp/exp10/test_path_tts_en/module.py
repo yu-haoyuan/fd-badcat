@@ -1,17 +1,7 @@
-import os
-import wave
-import subprocess
-import numpy as np
 import sherpa_onnx
-import openai
-from piper import PiperVoice
 from pathlib import Path
-import os
-import re
 import requests
-import base64
 import json
-import tempfile
 import soundfile as sf
 import io, torch
 import torchaudio
@@ -23,9 +13,6 @@ ASR_MODEL = sherpa_onnx.OfflineRecognizer.from_paraformer(
     num_threads=2,
     provider="cpu",  # 可改为 "cuda" 使用 GPU
 )
-
-QWEN_URL = "http://127.0.0.1:10004/v1/chat/completions"
-
 
 def _call_index_tts(text: str) -> bytes:
     url = "http://127.0.0.1:19000/tts"
@@ -60,7 +47,7 @@ def asr(path):
     print("asrok")
     return str(stream.result.text).strip()
 
-
+QWEN_URL = "http://127.0.0.1:10004/v1/chat/completions"
 def llm_qwen3o(messages: list):
     payload = {
         "temperature": 0,
@@ -72,7 +59,6 @@ def llm_qwen3o(messages: list):
         "seed": 42,
         "messages": messages
     }
-
     try:
         response = requests.post(
             QWEN_URL,
@@ -81,18 +67,13 @@ def llm_qwen3o(messages: list):
             timeout=300
         )
         response.raise_for_status()
-
         data = response.json()
         return data["choices"][0]["message"]["content"]
-
     except Exception as e:
         print(f"[QWEN REQUEST ERROR] {e}")
         return ""
 
-
 def main():
     base_dir = Path("test_wav")
-
-
 if __name__ == "__main__":
     main()

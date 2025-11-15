@@ -238,12 +238,14 @@ async def main():
 
         read_all_subdirs = False
         max_files = None
-        target_subdir = ["Pause Handling", "User Real-time Backchannels"]
+        #target_subdir = ["Follow-up Questions", "Negation or Dissatisfaction", "Repetition Requests", "Silence or Termination", "Topic Switching"]
+        # target_subdir = ["Negation or Dissatisfaction"]
+        target_subdir = ["Speech Directed at Others", "Third-party Speech_after"]
 
         if read_all_subdirs:
             dirs = [d for d in base_dir.iterdir() if d.is_dir()]
         else:
-            dirs = [base_dir / target_subdir]
+            dirs = [base_dir / d for d in target_subdir]
 
         for subdir in tqdm(sorted(dirs), desc=f"{cur_lang} 目录进度", ncols=80):
             log(f"\n进入目录: {subdir.name}")
