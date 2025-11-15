@@ -326,7 +326,10 @@ class ConversationEngine:
 
                     if elapsed_silence >= self.END_HOLD_FRAMES:
                         seg_audio = np.concatenate(self.interrupt_buf)
-                        intent = await self.async_llm(self.INTERRUPT_PROMPT, seg_audio, self.TURN_IDX, add_to_history=False)
+                        intent = await self.async_llm(
+                            self.INTERRUPT_PROMPT, seg_audio,
+                            self.TURN_IDX, add_to_history=False
+                        )
 
                         if "interrupt" in intent.lower():
 
@@ -356,16 +359,6 @@ class ConversationEngine:
                                 "turn": self.TURN_IDX,
                                 "state": self.STATE
                             })
-
-                            self.BUFFER = self.interrupt_buf.copy()
-                            self.TURN_IDX += 1
-
-                            user_audio = np.concatenate(self.interrupt_buf)
-                            asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
-                            decision = await self.async_llm(self.RESPONSE_PROMPT, user_audio, self.TURN_IDX, add_to_history=True)
-                            asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
-
-
                             self.IN_SPEECH = False
                             self.interrupt_buf.clear()
                             self.INTERRUPT_COUNT = 0

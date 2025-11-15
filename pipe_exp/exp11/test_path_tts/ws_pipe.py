@@ -359,13 +359,6 @@ class ConversationEngine:
 
                             self.BUFFER = self.interrupt_buf.copy()
                             self.TURN_IDX += 1
-
-                            user_audio = np.concatenate(self.interrupt_buf)
-                            asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
-                            decision = await self.async_llm(self.RESPONSE_PROMPT, user_audio, self.TURN_IDX, add_to_history=True)
-                            asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
-
-
                             self.IN_SPEECH = False
                             self.interrupt_buf.clear()
                             self.INTERRUPT_COUNT = 0

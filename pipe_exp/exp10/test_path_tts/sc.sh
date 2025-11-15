@@ -20,7 +20,7 @@ python pipe_exp/exp10/test_path_tts/inter_score.py --config pipe_exp/exp10/test_
 python pipe_exp/exp10/test_path_tts/inter_sum.py --config pipe_exp/exp10/test_path_tts/config.yaml
 
 # # ---------- 6. 执行 ave.py ----------
-# python pipe_exp/exp8/test_path_tts/ave.py --config pipe_exp/exp8/test_path_tts/config.yaml
+python pipe_exp/exp8/test_path_tts/ave.py --config pipe_exp/exp8/test_path_tts/config.yaml
 
 # ---------- 7. 结束后台进程 ----------
 

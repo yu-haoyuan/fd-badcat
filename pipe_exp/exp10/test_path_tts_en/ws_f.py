@@ -240,8 +240,8 @@ async def main():
         max_files = None
         #target_subdir = ["Follow-up Questions", "Negation or Dissatisfaction", "Repetition Requests", "Silence or Termination", "Topic Switching"]
         # target_subdir = ["Negation or Dissatisfaction"]
-        target_subdir = ["Speech Directed at Others", "Third-party Speech_after"]
-
+        target_subdir = ["User Real-time Backchannels"]
+        
         if read_all_subdirs:
             dirs = [d for d in base_dir.iterdir() if d.is_dir()]
         else:

@@ -236,11 +236,11 @@ async def main():
         log = logger.log
         log(f"========== 前端模拟开始 ({cur_lang}) ==========")
 
-        read_all_subdirs = False
+        read_all_subdirs = True
         max_files = None
-        #target_subdir = ["Follow-up Questions", "Negation or Dissatisfaction", "Repetition Requests", "Silence or Termination", "Topic Switching"]
-        # target_subdir = ["Negation or Dissatisfaction"]
-        target_subdir = ["User Real-time Backchannels"]
+        # #target_subdir = ["Follow-up Questions", "Negation or Dissatisfaction", "Repetition Requests", "Silence or Termination", "Topic Switching"]
+        # # target_subdir = ["Negation or Dissatisfaction"]
+        # target_subdir = ["User Real-time Backchannels"]
 
         if read_all_subdirs:
             dirs = [d for d in base_dir.iterdir() if d.is_dir()]
