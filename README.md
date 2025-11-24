@@ -2,64 +2,55 @@
 fd-sds
 
 ---
-dabu 1108
+### 模型准备
 
-screen -S index_vllm
+需要的模型分别有
 
-conda activate index
+`qwen3omni `
 
-port = 19000
+`index tts`
 
-CUDA_VISIBLE_DEVICES=5 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libnvidia-ml.so.550.54.14:/usr/lib/x86_64-linux-gnu/libcuda.so.550.54.14 python model/index-tts-vllm/api_server.py
+`sherpa-onnx-paraformer-zh-2024-03-09`
 
+在三个终端中分别运行
+```
+setup/qwen3o_api.sh
+setup/index_api.sh
+bash setup/aux_model.sh
+```
+
+### 数据准备
+
+创建`exp`文件夹
+
+```
+mkdir exp/exp-1
+```
+然后将`test/clean`放到`exp/exp-1`下面
+```
+exp/
+└── exp-1/
+    ├── clean/
+    └── test/
+```
 ---
 
-server
+### 启动说明
+如果文件夹遵循测试集-test/clean格式，对应脚本文件夹为`./src`
 
-screen -S zh_server
+关于dev得分和实验结果的脚本在`./exp-dev`
 
-conda activate sds
-
-python test_path_tts/ws_pipe.py \
---medium "realtime_out1" \
---port 18000 # zh
-
-screen -S zh_client
-
-conda activate sds
-
-python test_path_tts/ws_f.py \
---exp "exp4" \
---lang "zh" \
---port 18000 # zh
-
----
-
-server
-
-screen -S en_server
-
-conda activate sds
-
-python test_path_tts/ws_pipe.py \
---medium "realtime_out2" \
---port 18001 # en
-
-screen -S en_client
-
-conda activate sds
-
-python test_path_tts/ws_f.py \
---exp "exp4" \
---lang "en" \
---port 18001 # en
-
----
-
-python test_path_tts/inter_score.py --exp exp4
-
-huggingface-cli download --resume-download nvidia/parakeet-tdt-0.6b-v2 --local-dir model/parakeet-tdt-0.6b-v2
-
-python test_path_tts/inter_sum.py --exp exp4
-
-python test_path_tts/ave.py
+最后的正确的输出为
+```
+exp/
+└── exp-1/
+    ├── clean/
+    ├── HD-Track2/        ← 这是放 output 的文件夹
+    │   ├── clean/
+    │   └── test/
+    ├── realtimeout_clean/
+    ├── realtimeout_test/
+    ├── test/
+    ├── exp-1_lg_clean_1.txt
+    └── exp-1_lg_test_1.txt
+```

@@ -1,0 +1,1836 @@
+{
+  "results": [
+    {
+      "key": "repeat_0004_0009_add",
+      "latency_stop_list": [
+        [
+          15.65,
+          16.158
+        ],
+        [
+          16.77,
+          19.646
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          10.75,
+          13.698
+        ],
+        [
+          24.574,
+          29.762
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0003_0004",
+      "latency_stop_list": [
+        [
+          13.314,
+          14.334
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.998,
+          10.434
+        ],
+        [
+          20.126,
+          23.17
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0008_0039",
+      "latency_stop_list": [
+        [
+          11.33,
+          11.998
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.982,
+          7.938
+        ],
+        [
+          16.67,
+          19.298
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0008_0053",
+      "latency_stop_list": [
+        [
+          10.242,
+          10.558
+        ],
+        [
+          11.106,
+          12.734
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          4.862,
+          7.81
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0002_0052",
+      "latency_stop_list": [
+        [
+          11.362,
+          11.678
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.982,
+          8.066
+        ],
+        [
+          16.798,
+          19.522
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0009_0001_add",
+      "latency_stop_list": [
+        [
+          9.634,
+          9.694
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          4.702,
+          6.562
+        ],
+        [
+          14.302,
+          16.802
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0010_0012_add",
+      "latency_stop_list": [
+        [
+          10.946,
+          13.118
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.95,
+          8.322
+        ],
+        [
+          16.51,
+          19.298
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0003_0006_add",
+      "latency_stop_list": [
+        [
+          10.402,
+          10.75
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.534,
+          7.618
+        ],
+        [
+          13.15,
+          15.938
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0007_0006_add",
+      "latency_stop_list": [
+        [
+          12.578,
+          15.678
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.646,
+          9.826
+        ],
+        [
+          18.302,
+          23.426
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0002_0039",
+      "latency_stop_list": [
+        [
+          10.818,
+          12.382
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.598,
+          7.97
+        ],
+        [
+          16.254,
+          18.85
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0001_0011",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          7.326,
+          9.026
+        ],
+        [
+          20.286,
+          22.914
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0006_0015_add",
+      "latency_stop_list": [
+        [
+          11.138,
+          11.998
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.014,
+          7.97
+        ],
+        [
+          16.35,
+          19.522
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0007_0018_add",
+      "latency_stop_list": [
+        [
+          13.41,
+          16.478
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          8.414,
+          10.946
+        ],
+        [
+          19.71,
+          22.882
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0001_0008_add",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          7.486,
+          9.698
+        ],
+        [
+          17.118,
+          19.554
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0001_0010_add",
+      "latency_stop_list": [
+        [
+          10.562,
+          15.198
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.662,
+          8.226
+        ],
+        [
+          16.254,
+          19.458
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0003_0017_add",
+      "latency_stop_list": [
+        [
+          10.786,
+          11.038
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.854,
+          8.098
+        ],
+        [
+          16.382,
+          18.914
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0005_0016_add",
+      "latency_stop_list": [
+        [
+          11.138,
+          13.406
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.43,
+          8.514
+        ],
+        [
+          14.846,
+          18.338
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0007_0016_add",
+      "latency_stop_list": [
+        [
+          10.85,
+          13.406
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.982,
+          8.386
+        ],
+        [
+          14.462,
+          19.394
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0002_0004",
+      "latency_stop_list": [
+        [
+          12.834,
+          15.454
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.358,
+          10.05
+        ],
+        [
+          17.726,
+          24.098
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0009_0021",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          7.006,
+          9.826
+        ],
+        [
+          19.294,
+          25.858
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0001_0007_add",
+      "latency_stop_list": [
+        [
+          10.37,
+          10.942
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.438,
+          7.394
+        ],
+        [
+          15.358,
+          18.498
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0004_0014_add",
+      "latency_stop_list": [
+        [
+          12.674,
+          13.182
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.678,
+          9.826
+        ],
+        [
+          18.846,
+          21.41
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0006_0020_add",
+      "latency_stop_list": [
+        [
+          10.21,
+          12.51
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.246,
+          7.266
+        ],
+        [
+          16.062,
+          18.882
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0010_0002",
+      "latency_stop_list": [
+        [
+          13.666,
+          14.558
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          8.478,
+          11.458
+        ],
+        [
+          19.614,
+          22.818
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0008_0017_add",
+      "latency_stop_list": [
+        [
+          13.378,
+          14.046
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          8.35,
+          10.498
+        ],
+        [
+          17.438,
+          22.69
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0006_0030",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          5.918,
+          7.81
+        ],
+        [
+          16.83,
+          20.034
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0005_0005_add",
+      "latency_stop_list": [
+        [
+          14.37,
+          17.118
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          9.438,
+          12.45
+        ],
+        [
+          19.902,
+          23.682
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0005_0019",
+      "latency_stop_list": [
+        [
+          12.386,
+          15.102
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.07,
+          9.794
+        ],
+        [
+          17.374,
+          19.938
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0004_0037",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          7.262,
+          9.314
+        ],
+        [
+          22.398,
+          25.634
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0002_0008_add",
+      "latency_stop_list": [
+        [
+          11.65,
+          12.414
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.07,
+          9.346
+        ],
+        [
+          16.51,
+          19.362
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0002_0020_add",
+      "latency_stop_list": [
+        [
+          10.978,
+          11.07
+        ],
+        [
+          11.586,
+          14.814
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.046,
+          8.418
+        ],
+        [
+          16.958,
+          20.418
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0007_0031",
+      "latency_stop_list": [
+        [
+          10.818,
+          14.558
+        ],
+        [
+          18.242,
+          21.182
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.342,
+          9.346
+        ],
+        [
+          14.558,
+          16.898
+        ],
+        [
+          22.238,
+          25.666
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0003_0004_add",
+      "latency_stop_list": [
+        [
+          14.37,
+          15.326
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          9.406,
+          11.97
+        ],
+        [
+          20.574,
+          23.362
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0004_0002",
+      "latency_stop_list": [
+        [
+          12.866,
+          15.102
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.102,
+          10.53
+        ],
+        [
+          21.182,
+          24.45
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0006_0040",
+      "latency_stop_list": [
+        [
+          11.81,
+          12.702
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.302,
+          8.482
+        ],
+        [
+          16.67,
+          19.906
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0005_0043",
+      "latency_stop_list": [
+        [
+          12.322,
+          14.174
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.718,
+          9.026
+        ],
+        [
+          16.766,
+          19.682
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0004_0016_add",
+      "latency_stop_list": [
+        [
+          10.818,
+          12.926
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.174,
+          8.13
+        ],
+        [
+          15.39,
+          18.498
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0004_0020_add",
+      "latency_stop_list": [
+        [
+          13.25,
+          15.774
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          8.446,
+          11.17
+        ],
+        [
+          15.774,
+          18.498
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0008_0013_add",
+      "latency_stop_list": [
+        [
+          12.482,
+          15.518
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.55,
+          9.986
+        ],
+        [
+          16.958,
+          19.586
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0001_0018",
+      "latency_stop_list": [
+        [
+          13.09,
+          14.398
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.838,
+          10.274
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0010_0035",
+      "latency_stop_list": [
+        [
+          11.746,
+          12.478
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.686,
+          9.058
+        ],
+        [
+          16.702,
+          20.386
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0002_0047",
+      "latency_stop_list": [
+        [
+          11.81,
+          12.862
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.526,
+          8.77
+        ],
+        [
+          19.006,
+          21.826
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0001_0022",
+      "latency_stop_list": [
+        [
+          15.01,
+          17.726
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          9.182,
+          11.746
+        ],
+        [
+          26.59,
+          29.858
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0009_0004_add",
+      "latency_stop_list": [
+        [
+          10.914,
+          12.094
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.046,
+          8.226
+        ],
+        [
+          17.214,
+          20.674
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0005_0001_add",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          5.31,
+          7.778
+        ],
+        [
+          15.614,
+          21.122
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0010_0001_add",
+      "latency_stop_list": [
+        [
+          11.778,
+          12.798
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.91,
+          9.122
+        ],
+        [
+          15.934,
+          19.202
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0005_0019_add",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          5.182,
+          7.522
+        ],
+        [
+          16.862,
+          20.482
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0007_0054",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          6.238,
+          8.162
+        ],
+        [
+          18.206,
+          23.298
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0003_0010_add",
+      "latency_stop_list": [
+        [
+          10.05,
+          11.262
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.918,
+          8.162
+        ],
+        [
+          14.91,
+          17.858
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0002_0002_add",
+      "latency_stop_list": [
+        [
+          11.522,
+          12.478
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.366,
+          8.226
+        ],
+        [
+          21.086,
+          24.002
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0007_0020_add",
+      "latency_stop_list": [
+        [
+          13.186,
+          14.654
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          8.158,
+          10.498
+        ],
+        [
+          18.014,
+          20.77
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0008_0042",
+      "latency_stop_list": [
+        [
+          11.458,
+          12.19
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.142,
+          8.034
+        ],
+        [
+          17.118,
+          22.242
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0004_0001",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          6.59,
+          8.61
+        ],
+        [
+          19.198,
+          24.066
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0003_0021",
+      "latency_stop_list": [
+        [
+          13.826,
+          14.526
+        ],
+        [
+          15.17,
+          17.374
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          8.446,
+          11.202
+        ],
+        [
+          20.478,
+          23.458
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0007_0012_add",
+      "latency_stop_list": [
+        [
+          14.37,
+          15.742
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          9.502,
+          12.066
+        ],
+        [
+          20.03,
+          23.458
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0002_0005_add",
+      "latency_stop_list": [
+        [
+          9.794,
+          10.878
+        ],
+        [
+          11.714,
+          14.078
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          4.766,
+          6.85
+        ],
+        [
+          14.078,
+          17.378
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0004_0022",
+      "latency_stop_list": [
+        [
+          12.098,
+          12.51
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.782,
+          8.93
+        ],
+        [
+          19.038,
+          22.722
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0006_0004_add",
+      "latency_stop_list": [
+        [
+          11.714,
+          14.398
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.622,
+          8.994
+        ],
+        [
+          17.95,
+          21.09
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0008_0034",
+      "latency_stop_list": [
+        [
+          10.402,
+          11.262
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.118,
+          7.522
+        ],
+        [
+          14.398,
+          17.282
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0003_0012",
+      "latency_stop_list": [
+        [
+          12.578,
+          12.67
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.326,
+          9.378
+        ],
+        [
+          16.99,
+          19.266
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0010_0018_add",
+      "latency_stop_list": [
+        [
+          7.33,
+          7.582
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          2.366,
+          6.402
+        ],
+        [
+          13.31,
+          15.298
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0009_0027",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          5.982,
+          8.258
+        ],
+        [
+          18.91,
+          24.898
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0001_0009",
+      "latency_stop_list": [
+        [
+          11.842,
+          14.814
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.526,
+          8.706
+        ],
+        [
+          21.182,
+          24.354
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0001_0004_add",
+      "latency_stop_list": [
+        [
+          11.618,
+          12.478
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.686,
+          8.962
+        ],
+        [
+          16.734,
+          19.746
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0006_0051",
+      "latency_stop_list": [
+        [
+          9.89,
+          12.03
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          4.382,
+          6.306
+        ],
+        [
+          13.63,
+          16.098
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0006_0046",
+      "latency_stop_list": [
+        [
+          12.642,
+          14.334
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.262,
+          9.666
+        ],
+        [
+          19.902,
+          23.17
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0004_0015_add",
+      "latency_stop_list": [
+        [
+          13.506,
+          15.038
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.934,
+          10.594
+        ],
+        [
+          18.302,
+          23.746
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0009_0008_add",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          7.038,
+          9.442
+        ],
+        [
+          15.742,
+          18.434
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0008_0015_add",
+      "latency_stop_list": [
+        [
+          12.514,
+          13.47
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.87,
+          10.082
+        ],
+        [
+          17.758,
+          20.738
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0003_0011_add",
+      "latency_stop_list": [
+        [
+          12.002,
+          13.726
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.102,
+          9.954
+        ],
+        [
+          17.886,
+          20.93
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0009_0017_add",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          5.886,
+          7.746
+        ],
+        [
+          18.046,
+          20.482
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0006_0005_add",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          5.63,
+          7.874
+        ],
+        [
+          16.99,
+          19.682
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0002_0025",
+      "latency_stop_list": [
+        [
+          11.522,
+          13.438
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.366,
+          9.698
+        ],
+        [
+          16.51,
+          22.05
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0007_0042",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          6.078,
+          8.546
+        ],
+        [
+          18.206,
+          21.346
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0009_0019",
+      "latency_stop_list": [
+        [
+          12.93,
+          14.75
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.774,
+          10.37
+        ],
+        [
+          18.142,
+          23.65
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0005_0049",
+      "latency_stop_list": [
+        [
+          11.586,
+          13.086
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.238,
+          8.322
+        ],
+        [
+          18.174,
+          23.33
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0006_0044",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          5.438,
+          7.458
+        ],
+        [
+          15.006,
+          17.506
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0002_0006_add",
+      "latency_stop_list": [
+        [
+          10.146,
+          10.878
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.278,
+          7.49
+        ],
+        [
+          13.918,
+          16.578
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0005_0039",
+      "latency_stop_list": [
+        [
+          12.194,
+          15.166
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.718,
+          9.154
+        ],
+        [
+          16.702,
+          19.778
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0001_0002_add",
+      "latency_stop_list": [
+        [
+          11.778,
+          12.222
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.846,
+          8.866
+        ],
+        [
+          17.854,
+          20.514
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0004_0051",
+      "latency_stop_list": [
+        [
+          12.002,
+          13.854
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.686,
+          8.834
+        ],
+        [
+          17.758,
+          21.154
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0003_0046",
+      "latency_stop_list": [
+        [
+          12.226,
+          13.438
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.75,
+          9.218
+        ],
+        [
+          17.246,
+          19.65
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0009_0050",
+      "latency_stop_list": [
+        [
+          14.21,
+          16.958
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          8.158,
+          14.21
+        ],
+        [
+          19.742,
+          23.842
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0008_0038",
+      "latency_stop_list": [
+        [
+          10.402,
+          10.91
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.054,
+          7.074
+        ],
+        [
+          15.838,
+          18.946
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0007_0020",
+      "latency_stop_list": [
+        [
+          13.378,
+          13.438
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          8.062,
+          10.146
+        ],
+        [
+          18.206,
+          21.122
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0008_0008_add",
+      "latency_stop_list": [
+        [
+          11.49,
+          11.582
+        ],
+        [
+          12.162,
+          16.318
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.59,
+          9.314
+        ],
+        [
+          16.574,
+          19.49
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0010_0033",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          8.894,
+          11.266
+        ],
+        [
+          21.342,
+          24.322
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0008_0006_add",
+      "latency_stop_list": [
+        [
+          12.194,
+          13.79
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.326,
+          9.666
+        ],
+        [
+          17.182,
+          19.97
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0010_0019_add",
+      "latency_stop_list": [
+        [
+          11.906,
+          12.222
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          7.006,
+          8.898
+        ],
+        [
+          16.958,
+          19.362
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0009_0003_add",
+      "latency_stop_list": [
+        [
+          11.426,
+          11.998
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          6.27,
+          8.29
+        ],
+        [
+          15.966,
+          18.786
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0007_0025",
+      "latency_stop_list": [
+        [
+          10.178,
+          10.27
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          4.638,
+          6.338
+        ],
+        [
+          15.198,
+          20.162
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0009_0006",
+      "latency_stop_list": [
+        [
+          14.946,
+          15.582
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          9.31,
+          11.682
+        ],
+        [
+          22.814,
+          28.098
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0006_0002_add",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          10.174,
+          13.986
+        ],
+        [
+          21.054,
+          23.81
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0010_0011_add",
+      "latency_stop_list": [
+        [
+          8.706,
+          10.654
+        ],
+        [
+          11.586,
+          12.766
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          4.03,
+          8.482
+        ],
+        [
+          15.07,
+          17.826
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0005_0014",
+      "latency_stop_list": [
+        [
+          11.522,
+          12.638
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.726,
+          8.994
+        ],
+        [
+          19.198,
+          22.466
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0010_0039",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          8.222,
+          10.498
+        ],
+        [
+          19.39,
+          22.114
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0001_0044",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          4.35,
+          6.242
+        ],
+        [
+          16.446,
+          20.098
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0005_0007_add",
+      "latency_stop_list": [
+        [
+          11.266,
+          14.366
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          5.726,
+          8.066
+        ],
+        [
+          19.486,
+          25.186
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0003_0045",
+      "latency_stop_list": [],
+      "latency_resp_list": [
+        [
+          7.038,
+          8.898
+        ],
+        [
+          18.046,
+          21.218
+        ]
+      ]
+    },
+    {
+      "key": "repeat_0010_0030",
+      "latency_stop_list": [
+        [
+          14.53,
+          15.518
+        ]
+      ],
+      "latency_resp_list": [
+        [
+          9.342,
+          11.778
+        ],
+        [
+          23.55,
+          26.562
+        ]
+      ]
+    }
+  ],
+  "average_latency": {
+    "avg_latency_stop": 1.5163636363636366,
+    "avg_latency_resp": 2.9150351758793986
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "interrupt": {
+    "Interruption Total Score": 89.7,
+    "avg_latency_stop": 1.106,
+    "avg_latency_resp": 2.461,
+    "avg_first_time_delay": 1.679
+  },
+  "reject": {
+    "Speech Directed at Others": {
+      "average_RESUME_score": 0.235,
+      "avg_first_time_delay": 1.8
+    },
+    "Third-party Speech_after": {
+      "average_RESUME_score": 0.34,
+      "avg_first_time_delay": 1.72
+    },
+    "User Real-time Backchannels": {
+      "average_RESUME_score": 0.765,
+      "avg_first_time_delay": 1.536
+    },
+    "Pause Handling": {
+      "reject_rate": 0.83,
+      "avg_first_time_delay": 1.826
+    },
+    "Third-party Speech_before": {
+      "reject_rate": 0.0,
+      "avg_first_time_delay": 0
+    }
+  },
+  "First Response Delay": 1.528,
+  "Interruption Total Score": 89.7,
+  "Rejection Total Score": 50.0,
+  "Total Delay": 1.698
+}

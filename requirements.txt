@@ -1,0 +1,16 @@
+numpy
+pyyaml
+tqdm
+requests
+uvicorn
+fastapi
+soundfile
+torchaudio
+torch
+silero-vad
+websockets
+sherpa-onnx
+modelscope
+transformers
+aiohttp
+ffmpeg-python
