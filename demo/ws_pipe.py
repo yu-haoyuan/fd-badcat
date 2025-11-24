@@ -52,22 +52,15 @@ class ConversationEngine:
         self.JUDGE_PROMPT = prompts.get("judge", "")
         self.INTERRUPT_PROMPT = prompts.get("interrupt", "")
         self.RESPONSE_PROMPT = prompts.get("response", "")
-        self.SHIFT_PROMPT = prompts.get("shift", "")
-        self.SHIFT_RE_PROMPT = prompts.get("shift_s", "")
-        self.semantic_shift = None
 
         self.assistant_history = []
         self.user_history = []
 
     # 构造 LLM messages
-    def build_messages(self, system_prompt, user_history, assistant_history, user_audio, use_history, shift_history):
+    def build_messages(self, system_prompt, user_history, assistant_history, user_audio, use_history):
         # first user audio
         messages = [{"role": "system", "content": system_prompt}]
-        # ===========================
-        # 第一段逻辑（无历史 / 不使用历史）
-        # 加上：如果 shift_history == True，则禁止进入这里
-        # ===========================
-        if not shift_history and ((len(user_history) == 0 and len(assistant_history) == 0) or not use_history):
+        if (len(user_history) == 0 and len(assistant_history) == 0) or not use_history:
             audio_base64 = None
             if user_audio is not None:
                 with tempfile.NamedTemporaryFile(suffix=".wav", delete=True, dir=str(self.output_dir)) as tmp:
@@ -125,7 +118,6 @@ class ConversationEngine:
         self.interrupt_buf.clear()
         self.assistant_history.clear()
         self.user_history.clear()
-        self.semantic_shift = None
 
     async def send_control(self, event_type: str, data=None):
         if not self.websocket:
@@ -162,14 +154,13 @@ class ConversationEngine:
         return user_text
 
     # ==================================================
-    async def async_llm(self, system_prompt, user_audio, turn_id, add_to_history=False, shift_history=False):
+    async def async_llm(self, system_prompt, user_audio, turn_id, add_to_history=False):
         messages = self.build_messages(
             system_prompt=system_prompt,
             user_history=self.user_history,
             assistant_history=self.assistant_history,
             user_audio=user_audio,
-            use_history=add_to_history,
-            shift_history=shift_history
+            use_history=add_to_history
         )
         start_t = time.perf_counter()
         decision = await asyncio.to_thread(llm_qwen3o, messages)
@@ -269,42 +260,19 @@ class ConversationEngine:
                         return
 
                     # ---- 完整响应流程 ----
-                    # --semantic shift--
-                    if self.TURN_IDX != 0:
-                        shift_judge = await self.async_llm(self.SHIFT_PROMPT, user_audio, self.TURN_IDX, add_to_history=False, shift_history=True)
-                        if "no" in shift_judge.lower(): #normal answer
-                            asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
-                            decision = await self.async_llm(self.RESPONSE_PROMPT, user_audio, self.TURN_IDX, add_to_history=True)
-                            asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
-                            return
-                        elif "yes" in shift_judge.lower(): #repeat
-                            decision = await self.async_llm(self.SHIFT_RE_PROMPT, None, self.TURN_IDX, add_to_history=False, shift_history=True)
-                            asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
-                            return
-                    else:
-                        asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
-                        decision = await self.async_llm(self.RESPONSE_PROMPT, user_audio, self.TURN_IDX, add_to_history=True)
-                        asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
-                        return
+                    asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
+                    decision = await self.async_llm(self.RESPONSE_PROMPT, user_audio, self.TURN_IDX, add_to_history=True)
+                    asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
+                    return
 
         # ---- continue 超时逻辑 ----
         if self.CONTINUE_ARMED:
             elapsed = time.time() - self.CONTINUE_START_TIME
             if elapsed >= self.AFTER_CONTINUE_TIMEOUT_FRAMES:
                 user_audio = np.concatenate(self.BUFFER)
-                if self.TURN_IDX != 0:
-                    shift_judge = await self.async_llm(self.SHIFT_PROMPT, user_audio, self.TURN_IDX, add_to_history=False, shift_history=True)
-                    if "no" in shift_judge.lower(): #normal answer
-                        asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
-                        decision = await self.async_llm(self.RESPONSE_PROMPT, user_audio, self.TURN_IDX, add_to_history=True)
-                        asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
-                    elif "yes" in shift_judge.lower(): #repeat
-                        decision = await self.async_llm(self.SHIFT_RE_PROMPT, None, self.TURN_IDX, add_to_history=False, shift_history=True)
-                        asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
-                else:
-                    asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
-                    decision = await self.async_llm(self.RESPONSE_PROMPT, user_audio, self.TURN_IDX, add_to_history=True)
-                    asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
+                asyncio.create_task(self.async_asr(user_audio, self.TURN_IDX))
+                decision = await self.async_llm(self.RESPONSE_PROMPT, user_audio, self.TURN_IDX, add_to_history=True)
+                asyncio.create_task(self.async_tts(decision, self.TURN_IDX))
 
                 self.CONTINUE_ARMED = False
                 self.CONTINUE_START_TIME = None
@@ -360,7 +328,7 @@ class ConversationEngine:
                         seg_audio = np.concatenate(self.interrupt_buf)
                         intent = await self.async_llm(self.INTERRUPT_PROMPT, seg_audio, self.TURN_IDX, add_to_history=False)
 
-                        if "switch" in intent.lower():
+                        if "interrupt" in intent.lower():
 
                             await self.send_control("shot_interrupt", {
                                 "timestamp": round(time.time() - self.start_wall, 3),

@@ -14,8 +14,8 @@ fd-sds
 
 在三个终端中分别运行
 ```
-setup/qwen3o_api.sh
-setup/index_api.sh
+bash setup/qwen3o_api.sh
+bash setup/index_api.sh
 bash setup/aux_model.sh
 ```
 
@@ -39,6 +39,11 @@ exp/
 如果文件夹遵循测试集-test/clean格式，对应脚本文件夹为`./src`
 
 关于dev得分和实验结果的脚本在`./exp-dev`
+
+启动
+```
+bash src/sc.sh
+```
 
 最后的正确的输出为
 ```

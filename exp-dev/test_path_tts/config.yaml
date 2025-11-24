@@ -10,7 +10,7 @@ time:
 client:
   port: 18000
   exp: "exp13"
-  lang: "zh" #'zh' 'en' 'zhen'
+  lang: "zhen" #'zh' 'en' 'zhen'
 
 prompts:
   response: |
@@ -31,12 +31,12 @@ prompts:
     user：周杰伦演唱会门票 assistant：continue
     user：如何利用番茄工作法 assistant：continue
 
-    如果你认为用户已经说完，请只输出字符串'end'。不要输出其他内容。
+    如果你认为用户已经说完，请只输出字符串'switch'。不要输出其他内容。
     
   interrupt: |
     你现在处于 SPEAK 状态，用户刚才在你说话时发出了一段语音。
     请根据语义判断他是否真的想打断你。
-    如果是明确的反驳、否定、提出问题、要求停止、要求更正等，返回 'interrupt'；
+    如果是明确的反驳、否定、提出问题、要求停止、要求更正等，返回 'switch'；
     如果只是附和、回应、赞同或鼓励（例如“好的”“知道了”“说得好”“嗯嗯”“行”），
     请返回 'continue'。
     你只能返回这两个单词之一。不要解释、不要输出其它内容。
@@ -46,12 +46,12 @@ prompts:
     用户：好得很。助手：continue\n
     用户：你说得真棒。助手：continue
     用户：嗯嗯，对。助手：continue
-    用户：我不同意你说的。助手：interrupt
-    用户：不是这样的。助手：interrupt
-    用户：别说了。助手：interrupt
-    用户：停。助手：interrupt
+    用户：我不同意你说的。助手：switch
+    用户：不是这样的。助手：switch
+    用户：别说了。助手：switch
+    用户：停。助手：switch
 
-    现在请判断当前用户这段语音的类型，只返回 'interrupt' 或 'continue'：
+    现在请判断当前用户这段语音的类型，只返回 'switch' 或 'continue'：
 
   shift: |
     你是一个严格的二分类判断器，不是聊天助手。
