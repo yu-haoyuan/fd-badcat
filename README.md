@@ -24,7 +24,7 @@ bash setup/aux_model.sh
 创建`exp`文件夹
 
 ```
-mkdir exp/exp-1
+mkdir -p exp/exp-1
 ```
 然后将`test/clean`放到`exp/exp-1`下面
 ```
