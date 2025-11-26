@@ -24,7 +24,7 @@ bash setup/aux_model.sh
 创建`exp`文件夹
 
 ```
-mkdir -p exp/exp-1
+mkdir exp/exp-1
 ```
 然后将`test/clean`放到`exp/exp-1`下面
 ```
@@ -58,4 +58,29 @@ exp/
     ├── test/
     ├── exp-1_lg_clean_1.txt
     └── exp-1_lg_test_1.txt
+```
+
+
+### qwen3o失败情况下环境安装方式
+```
+这里要解压到自己的conda环境下面,如我这里是/root/miniconda3
+mkdir -p /root/miniconda3/envs/vllm
+tar -xzvf vllm_env.tar.gz -C /root/miniconda3/envs/vllm --strip-components=1
+source /root/miniconda3/etc/profile.d/conda.sh
+conda activate vllm
+cd model/vllm
+export VLLM_PRECOMPILED_WHEEL_LOCATION="https://wheels.vllm.ai/a5dd03c1ebc5e4f56f3c9d3dc0436e9c582c978f/vllm-0.9.2-cp38-abi3-manylinux1_x86_64.whl"
+VLLM_USE_PRECOMPILED=1 pip install -e . -v --no-build-isolation
+
+```
+
+model
+```
+model/
+├── Index-TTS-1.5-vLLM/
+├── index-tts-vllm/
+├── qwen3omni/
+├── sherpa-onnx-paraformer-zh-2024-03-09/
+└── vllm_env.tar.gz
+
 ```
