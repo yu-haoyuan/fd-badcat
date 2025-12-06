@@ -5,7 +5,7 @@ eval "$(conda shell.bash hook)"
 source ~/.bashrc
 
 cd model
-git clone https://github.com/Ksuriuri/index-tts-vllm.git
+# git clone https://github.com/Ksuriuri/index-tts-vllm.git 这里我们已经手动进行了配置
 cd index-tts-vllm
 python -c "import modelscope" 2>/dev/null || pip install -q modelscope
 modelscope download --model kusuriuri/Index-TTS-1.5-vLLM --local_dir ./checkpoints/Index-TTS-1.5-vLLM
