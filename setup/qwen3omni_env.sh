@@ -1,4 +1,8 @@
-#!/usr/bin/env bash
+#!/bin/bash
+set -e
+
+eval "$(conda shell.bash hook)"
+source ~/.bashrc
 mkdir model
 cd model
 git clone -b qwen3_omni https://github.com/wangxiongts/vllm.git
