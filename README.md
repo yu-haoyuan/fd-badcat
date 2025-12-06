@@ -4,11 +4,11 @@ full duplex-spoken dialogue system
 ---
 ### 环境准备
 
-我们提供了
+我们提供了一键式启动的docker环境：
 ```
 docker build --progress=plain -t fd-badcat .
 ```
-但是请注意，由于docker国内镜像的问题，我们出现了多次在配置qwen3omni环境的vllm编译阶段的不可避免的错误，所以如果`docker file`报错，请根据以下步骤手动安装环境：
+但是请注意，由于docker的国内镜像存在问题，我们在试运行时，多次在vllm编译阶段出现了不可避免的错误，所以如果`docker file`报错，请根据以下步骤手动安装环境（我们已经在本地环境确定，如下方案100%可行）：
 
 首先，确认本机是否安装tmux：
 ```
@@ -32,7 +32,7 @@ index-tts-vllm           /root/miniconda3/envs/index-tts-vllm(index服务环境)
 fdbc-qwen3o-vllm         /root/miniconda3/envs/vllm(qwen3omni环境)
 ```
 
-准备完毕后正确的文件子目录`model`为
+准备完毕后正确的文件子目录`model`为：
 ```
 model/
 ├── Qwen3-Omni-30B-A3B-Instruct/
@@ -86,7 +86,11 @@ python model/index-tts-vllm/api_server.py
 `INFO:     Uvicorn running on http://0.0.0.0:19000 (Press CTRL+C to quit)` 的启动说明，请同样保持这个终端的开启；
 
 ##### 2.主实验启动
-直接运行脚本：`bash src/sc.sh`，将会自动开启前后端，开始合成输出，并且提示`启动完成`，此时物理终端还是 1 个，里面有 2 个 tmux 窗口在跑服务。
+直接运行脚本：
+```
+bash src/sc.sh
+```
+将会自动开启前后端，开始合成输出，并且提示`启动完成`，此时物理终端还是 1 个，里面有 2 个 tmux 窗口在跑服务。
 
 如果脚本`sc.sh`一键运行失败，那么请在不同的终端，手动启动前后端脚本：
 ```
