@@ -2,7 +2,8 @@
 mkdir model
 cd model
 git clone -b qwen3_omni https://github.com/wangxiongts/vllm.git
-conda create -n fdbc-qwen3o-vllm python=3.10 -y
+conda env list | grep -q fdbc-qwen3o-vllm || conda create -n fdbc-qwen3o-vllm python=3.10 -y
+
 conda activate fdbc-qwen3o-vllm
 cd vllm
 pip install -r requirements/build.txt
