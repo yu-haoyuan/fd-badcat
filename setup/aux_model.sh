@@ -8,7 +8,14 @@ ASR_DIR="$ROOT_DIR/model/sherpa-onnx-paraformer-zh-2024-03-09"
 ASR_URL="https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-paraformer-zh-2024-03-09.tar.bz2"
 ASR_TAR="$ROOT_DIR/model/sherpa-onnx-paraformer-zh-2024-03-09.tar.bz2"
 
-echo "[1/3] 下载并解压 ASR 模型"
+eval "$(conda shell.bash hook)"
+source ~/.bashrc
+
+conda env list | grep -q fd-sds || conda create -n fd-sds python=3.10 -y
+conda activate fd-sds
+pip install -r "$ROOT_DIR/requirements.txt"
+
+echo "下载并解压 ASR 模型"
 mkdir -p "$ROOT_DIR/model"
 cd "$ROOT_DIR/model"
 
@@ -24,7 +31,7 @@ fi
 
 cd "$ROOT_DIR"
 
-echo "[2/3] 检查模型状态"
+echo "检查模型状态"
 
 if [ -d "$ASR_DIR" ]; then
     echo "ASR 模型存在"
@@ -33,17 +40,3 @@ else
     exit 1
 fi
 
-check_port() {
-    local PORT_HEX=$(printf "%04X" "$1")
-    if grep -q ":$PORT_HEX" /proc/net/tcp; then
-        echo "端口 $1 正常"
-    else
-        echo "端口 $1 未启动"
-    fi
-}
-
-echo "[3/3] 检查服务端口"
-check_port 19000
-check_port 10004
-
-echo "检测完成"
