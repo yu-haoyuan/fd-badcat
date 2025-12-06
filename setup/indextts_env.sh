@@ -1,3 +1,9 @@
+#!/bin/bash
+set -e
+
+eval "$(conda shell.bash hook)"
+source ~/.bashrc
+
 cd model
 git clone https://github.com/Ksuriuri/index-tts-vllm.git
 cd index-tts-vllm
