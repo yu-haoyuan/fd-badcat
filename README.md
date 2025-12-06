@@ -69,6 +69,8 @@ exp/
 
 但是如果实验足够短，那么简单的多终端运行也是可以接受的。经过我们的测试，手动在多终端启动是便捷可靠的（得益于vllm的并发优化）。
 
+**这里我们需要在五个终端全部成功启动的情况下运行实验**
+
 请在终端1运行以下指令：
 ```
 conda activate fdbc-qwen3o-vllm 
@@ -77,7 +79,16 @@ vllm serve model/Qwen3-Omni-30B-A3B-Instruct --port 10003 --host 0.0.0.0 --dtype
 启动qwen3omni vllm模型，如果正确启动，会在该终端下面看到
 `running on http://0.0.0.0:10003`的启动说明，请保持这个终端的开启；
 
-请在终端2运行以下指令：
+请在终端2运行以下指令:
+```
+conda activate fdbc-qwen3o-vllm 
+python src/qwen3_api.py
+```
+如果正确启动，会在该终端下面看到
+`running on http://0.0.0.0:10004`的启动说明，请保持这个终端的开启；
+
+
+请在终端3运行以下指令：
 ```
 conda activate index-tts-vllm
 python model/index-tts-vllm/api_server.py
@@ -92,7 +103,7 @@ bash src/sc.sh
 ```
 将会自动开启前后端，开始合成输出，并且提示`启动完成`，此时物理终端还是 1 个，里面有 2 个 tmux 窗口在跑服务。
 
-如果脚本`sc.sh`一键运行失败，那么请在不同的终端，手动启动前后端脚本：
+如果脚本`sc.sh`一键运行失败，那么请在第4,5个终端，手动启动前后端脚本：
 ```
 python src/backend.py --config fd-badcat/src/config.yaml
 python src/frontend.py --config fd-badcat/src/config.yaml
