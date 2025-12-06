@@ -3,19 +3,36 @@ full duplex-spoken dialogue system
 
 ---
 ### 环境准备
+
 我们提供了
 ```
 docker build --progress=plain -t fd-badcat .
 ```
-但是请注意，我们出现了多次在配置qwen3omni环境的vllm编译阶段的不可避免的错误，所以如果`docker file`报错请根据以下步骤安装环境
+但是请注意，由于docker国内镜像的问题，我们出现了多次在配置qwen3omni环境的vllm编译阶段的不可避免的错误，所以如果`docker file`报错，请根据以下步骤手动安装环境：
 
+首先，确认本机是否安装tmux：
+```
+command -v tmux >/dev/null 2>&1 || (sudo apt update && sudo apt install -y tmux)
+```
+
+然后在终端中，依次运行脚本：
 ```
 bash setup/qwen3omni_env.sh
 bash setup/indextts_env.sh
 bash setup/aux_model.sh
 ```
 
-准备完毕后正确的文件目录为
+---
+### 环境检查
+
+使用docker或是脚本安装完毕后，使用`conda env list`进行检查，正确的环境内容为：
+```
+fd-sds                   /root/miniconda3/envs/fd-sds(系统运行环境)
+index-tts-vllm           /root/miniconda3/envs/index-tts-vllm(index服务环境)
+fdbc-qwen3o-vllm         /root/miniconda3/envs/vllm(qwen3omni环境)
+```
+
+准备完毕后正确的文件子目录`model`为
 ```
 model/
 ├── Qwen3-Omni-30B-A3B-Instruct/
@@ -24,26 +41,15 @@ model/
 │       └── Index-TTS-1.5-vLLM/
 └── sherpa-onnx-paraformer-zh-2024-03-09/
 ```
-
-正确的环境内容为
-```
-conda env list
-# conda environments:
-fd-sds                   /root/miniconda3/envs/fd-sds(系统运行环境)
-index-tts-vllm           /root/miniconda3/envs/index-tts-vllm(index服务环境)
-fdbc-qwen3o-vllm         /root/miniconda3/envs/vllm(qwen3omni环境)
-
-```
-
+---
 
 ### 数据准备
 
-创建`exp`文件夹
-
+创建`exp/exp-1`文件夹，作为指定的数据目录：
 ```
 mkdir exp/exp-1
 ```
-然后将`test/clean`放到`exp/exp-1`下面
+然后将符合赛事要求的`test/clean`目录，放到`exp/exp-1`下面：
 ```
 exp/
 └── exp-1/
@@ -59,42 +65,30 @@ exp/
 
 我们的项目逻辑比较简单，如果两个api配置无误，那么实验本身依赖的环境则不会造成困扰，只依赖最基础的前后端工具
 
-我们的实验采取模拟现实时长的前后端模式，所以需要`screen`或者`tmux`进行多终端运行,但是如果实验足够短，那么简单的多终端运行也是可以接受的
+我们的实验采取模拟现实时长的前后端模式，也就是说，原始数据的长度≈实验运行的长度，所以需要`screen`或者`tmux`进行多终端持续并发运行。
 
-所以经过我们的测试，手动在多终端启动是便捷可靠的
+但是如果实验足够短，那么简单的多终端运行也是可以接受的。经过我们的测试，手动在多终端启动是便捷可靠的（得益于vllm的并发优化）。
 
-请在终端1
+请在终端1运行以下指令：
 ```
 conda activate fdbc-qwen3o-vllm 
 vllm serve model/Qwen3-Omni-30B-A3B-Instruct --port 10003 --host 0.0.0.0 --dtype bfloat16 --max-model-len 65536 --allowed-local-media-path / -tp 4
 ```
 启动qwen3omni vllm模型，如果正确启动，会在该终端下面看到
-`0.0.0.0:10003`的启动说明
+`running on http://0.0.0.0:10003`的启动说明，请保持这个终端的开启；
 
-
-请在终端2
+请在终端2运行以下指令：
 ```
 conda activate index-tts-vllm
 python model/index-tts-vllm/api_server.py
-
 ```
-启动qwen3omni vllm模型，如果正确启动，会在该终端下面看到
-`0.0.0.0:10003`的启动说明
+启动index-tts vllm模型，如果正确启动，会在该终端下面看到
+`INFO:     Uvicorn running on http://0.0.0.0:19000 (Press CTRL+C to quit)` 的启动说明，请同样保持这个终端的开启；
 
 ##### 2.主实验启动
-如果测试数据集文件夹遵循测试集-test/clean格式，对应脚本文件夹为`./src`
+直接运行脚本：`bash src/sc.sh`，将会自动开启前后端，开始合成输出，并且提示`启动完成`，此时物理终端还是 1 个，里面有 2 个 tmux 窗口在跑服务。
 
-关于dev得分和实验结果的脚本在`./exp-dev`
-
-启动实验脚本之前，确认本机是否安装tmux
-```
-command -v tmux >/dev/null 2>&1 || (sudo apt update && sudo apt install -y tmux)
-bash src/sc.sh
-```
-
-如果脚本一键运行失败
-
-那么请在不同的终端手动启动前后端脚本
+如果脚本`sc.sh`一键运行失败，那么请在不同的终端，手动启动前后端脚本：
 ```
 python src/backend.py --config fd-badcat/src/config.yaml
 python src/frontend.py --config fd-badcat/src/config.yaml
@@ -106,8 +100,10 @@ exp/
 └── exp-1/
     ├── clean/
     ├── HD-Track2/        ← 这是放 output 的文件夹
-    │   ├── clean/
-    │   └── test/
+    │   ├── clean/        ← 对应 clean 输入的输出目录
+    │   └── test/         ← 对应 test 输入的输出目录
+
+
     ├── realtimeout_clean/
     ├── realtimeout_test/
     ├── test/
@@ -126,10 +122,13 @@ exp/
 
 手动`ctrl c`退出后端
 
-然后运行
+
+### 结果检查
+
+运行成功后，在任意终端运行指令：
 ```
 for d in exp/exp-1/HD-Track2/*; do echo "$(basename "$d"): $(find "$d" -maxdepth 1 -type f -name "*.wav" | wc -l)"; done
 ```
-查看是否和输入文件数相同，进行正确性检验
+查看是否和输入文件数目相同，进行正确性检验
 
 
