@@ -11,39 +11,50 @@ Our paper is accepted by **ICASSP-2026 Grand Challenge**
 ![image](https://github.com/yu-haoyuan/fd-badcat/blob/main/fig.png)
 
 
-
 ---
-### 环境准备
 
-我们提供了一键式启动的docker环境：
+### Environment Preparation
+
+We provide a one-click startup Docker environment:
+
 ```
 docker build --progress=plain -t fd-badcat .
-```
-但是请注意，由于docker的国内镜像存在问题，我们在试运行时，多次在vllm编译阶段出现了不可避免的错误，所以如果`docker file`报错，请根据以下步骤手动安装环境（我们已经在本地环境确定，如下方案100%可行）：
 
-首先，确认本机是否安装tmux：
+```
+
+However, please note that due to issues with domestic Docker mirrors in China, we encountered unavoidable errors multiple times during the vLLM compilation stage during trial runs. Therefore, if the `docker file` throws an error, please follow the steps below to install the environment manually (we have confirmed locally that the following solution is 100% viable):
+
+First, confirm whether `tmux` is installed on the machine:
+
 ```
 command -v tmux >/dev/null 2>&1 || (sudo apt update && sudo apt install -y tmux)
+
 ```
 
-然后在终端中，依次运行脚本：
+Then, in the terminal, run the following scripts in order:
+
 ```
 bash setup/qwen3omni_env.sh
 bash setup/indextts_env.sh
 bash setup/aux_model.sh
+
 ```
 
 ---
-### 环境检查
 
-使用docker或是脚本安装完毕后，使用`conda env list`进行检查，正确的环境内容为：
+### Environment Check
+
+After completing the installation via Docker or scripts, use `conda env list` to check. The correct environment content should be:
+
 ```
-fd-sds                   /root/miniconda3/envs/fd-sds(系统运行环境)
-index-tts-vllm           /root/miniconda3/envs/index-tts-vllm(index服务环境)
-fdbc-qwen3o-vllm         /root/miniconda3/envs/vllm(qwen3omni环境)
+fd-sds                   /root/miniconda3/envs/fd-sds (System runtime environment)
+index-tts-vllm           /root/miniconda3/envs/index-tts-vllm (Index service environment)
+fdbc-qwen3o-vllm         /root/miniconda3/envs/vllm (Qwen3Omni environment)
+
 ```
 
-准备完毕后正确的文件子目录`model`为：
+Once prepared, the correct directory structure for the `model` subfolder is:
+
 ```
 model/
 ├── Qwen3-Omni-30B-A3B-Instruct/
@@ -51,110 +62,131 @@ model/
 │   └── checkpoints/
 │       └── Index-TTS-1.5-vLLM/
 └── sherpa-onnx-paraformer-zh-2024-03-09/
+
 ```
+
 ---
 
-### 数据准备
+### Data Preparation
 
-创建`exp/exp-1`文件夹，作为指定的数据目录：
+Create the `exp/exp-1` folder as the designated data directory:
+
 ```
 mkdir exp/exp-1
+
 ```
-然后将符合赛事要求的`test/clean`目录，放到`exp/exp-1`下面：
+
+Then, place the `test/clean` directories that meet the competition requirements under `exp/exp-1`:
+
 ```
 exp/
 └── exp-1/
     ├── clean/
     └── test/
+
 ```
+
 ---
 
-### 启动说明
+### Startup Instructions
 
-##### 1.api启动
-我们的仓库主要是基于调用`qwen3omni`的api和`indextts-1.5`的api进行实验
+##### 1. API Startup
 
-我们的项目逻辑比较简单，如果两个api配置无误，那么实验本身依赖的环境则不会造成困扰，只依赖最基础的前后端工具
+Our repository is primarily based on calling the `qwen3omni` API and the `indextts-1.5` API for experiments.
 
-我们的实验采取模拟现实时长的前后端模式，也就是说，原始数据的长度≈实验运行的长度，所以需要`screen`或者`tmux`进行多终端持续并发运行。
+The logic of our project is relatively simple. If the two APIs are configured correctly, the environment dependencies of the experiment itself will not cause issues, as it only relies on basic frontend and backend tools.
 
-但是如果实验足够短，那么简单的多终端运行也是可以接受的。经过我们的测试，手动在多终端启动是便捷可靠的（得益于vllm的并发优化）。
+Our experiment adopts a frontend-backend mode that simulates real-time duration. This means that the length of the raw data ≈ the duration of the experiment run. Therefore, `screen` or `tmux` is required for continuous concurrent operation across multiple terminals.
 
-**这里我们需要在五个终端全部成功启动的情况下运行实验**
+However, if the experiment is short enough, simple multi-terminal execution is also acceptable. Based on our testing, manually starting in multiple terminals is convenient and reliable (thanks to vLLM's concurrency optimization).
 
-请在终端1运行以下指令：
+**The experiment must be run with all five terminals successfully started.**
+
+In **Terminal 1**, run the following command:
+
 ```
 conda activate fdbc-qwen3o-vllm 
 vllm serve model/Qwen3-Omni-30B-A3B-Instruct --port 10003 --host 0.0.0.0 --dtype bfloat16 --max-model-len 65536 --allowed-local-media-path / -tp 4
-```
-启动qwen3omni vllm模型，如果正确启动，会在该终端下面看到
-`running on http://0.0.0.0:10003`的启动说明，请保持这个终端的开启；
 
-请在终端2运行以下指令:
+```
+
+This starts the Qwen3Omni vLLM model. If started correctly, you will see `running on http://0.0.0.0:10003` in the terminal. Please keep this terminal open.
+
+In **Terminal 2**, run the following command:
+
 ```
 conda activate fdbc-qwen3o-vllm 
 python src/qwen3_api.py
+
 ```
-如果正确启动，会在该终端下面看到
-`running on http://0.0.0.0:10004`的启动说明，请保持这个终端的开启；
 
+If started correctly, you will see `running on http://0.0.0.0:10004`. Please keep this terminal open.
 
-请在终端3运行以下指令：
+In **Terminal 3**, run the following command:
+
 ```
 conda activate index-tts-vllm
 python model/index-tts-vllm/api_server.py
-```
-启动index-tts vllm模型，如果正确启动，会在该终端下面看到
-`INFO:     Uvicorn running on http://0.0.0.0:19000 (Press CTRL+C to quit)` 的启动说明，请同样保持这个终端的开启；
 
-##### 2.主实验启动
-直接运行脚本：
+```
+
+This starts the Index-TTS vLLM model. If started correctly, you will see `INFO: Uvicorn running on http://0.0.0.0:19000 (Press CTRL+C to quit)`. Please keep this terminal open as well.
+
+##### 2. Main Experiment Startup
+
+Run the script directly:
+
 ```
 bash src/sc.sh
-```
-将会自动开启前后端，开始合成输出，并且提示`启动完成`，此时物理终端还是 1 个，里面有 2 个 tmux 窗口在跑服务。
 
-如果脚本`sc.sh`一键运行失败，那么请在第4,5个终端，手动启动前后端脚本：
+```
+
+This will automatically launch the frontend and backend and begin synthesizing output. It will prompt `Startup Complete`. At this point, there is still 1 physical terminal with 2 tmux windows running the services.
+
+If the `sc.sh` one-click script fails, please manually start the frontend and backend scripts in **Terminals 4 and 5**:
+
 ```
 python src/backend.py --config fd-badcat/src/config.yaml
 python src/frontend.py --config fd-badcat/src/config.yaml
+
 ```
 
-最后的正确的输出为
+The final correct output structure will be:
+
 ```
 exp/
 └── exp-1/
     ├── clean/
-    ├── HD-Track2/        ← 这是放 output 的文件夹
-    │   ├── clean/        ← 对应 clean 输入的输出目录
-    │   └── test/         ← 对应 test 输入的输出目录
-
-
+    ├── HD-Track2/         ← This is the folder for output
+    │   ├── clean/         ← Output directory corresponding to clean input
+    │   └── test/          ← Output directory corresponding to test input
     ├── realtimeout_clean/
     ├── realtimeout_test/
     ├── test/
     ├── exp-1_lg_clean_1.txt
     └── exp-1_lg_test_1.txt
+
 ```
-如果运行失败，检查18000端口是否被占用
 
-等待开始运行后自动进入前端界面
+If the run fails, check if port 18000 is occupied.
 
-由于是现实时间模拟，所以运行时间和输入音频总时长相同
+Once the run starts, it will automatically enter the frontend interface.
 
-完毕后自动跳转到后端窗口显示
+Since this is a real-time simulation, the execution time is equal to the total duration of the input audio.
 
+Upon completion, it will automatically jump to the backend window displaying:
 `INFO:connection closed`
 
-手动`ctrl c`退出后端
+Manually press `Ctrl+C` to exit the backend.
 
+### Results Check
 
-### 结果检查
+After a successful run, execute the following command in any terminal:
 
-运行成功后，在任意终端运行指令：
 ```
 for d in exp/exp-1/HD-Track2/*; do echo "$(basename "$d"): $(find "$d" -maxdepth 1 -type f -name "*.wav" | wc -l)"; done
-```
-查看是否和输入文件数目相同，进行正确性检验
 
+```
+
+Verify if the number of files matches the input file count to validate correctness.
 
