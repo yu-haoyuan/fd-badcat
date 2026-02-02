@@ -1,6 +1,17 @@
 # fd-badcat
 full duplex-spoken dialogue system
 
+> [Unit-Based Agent for Semi-Cascaded Full-Duplex Dialogue Systems](https://arxiv.org/abs/2601.20230) <br>
+> [Haoyuan Yu](https://yu-haoyuan.github.io/), [Yuxuan Chen], [Minjie Cai](https://cai-mj.github.io/) <br>
+> ICASSP 2026 Grand Challenge
+---
+
+Our paper is accepted by **ICASSP-2026 Grand Challenge**
+
+![image](https://github.com/yu-haoyuan/fd-badcat/blob/main/fig.png)
+
+
+
 ---
 ### 环境准备
 
