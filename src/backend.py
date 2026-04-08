@@ -1,4 +1,4 @@
-import json, asyncio, time, torch, soundfile as sf, numpy as np, base64, tempfile
+import json, asyncio, time, torch, soundfile as sf, numpy as np, base64, tempfile, io, os
 from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from silero_vad import load_silero_vad, VADIterator
@@ -56,17 +56,16 @@ class ConversationEngine:
         # Additionally: if shift_history == True, skip this branch
         # ---------------------------------------------
         if not shift_history and ((len(user_history) == 0 and len(assistant_history) == 0) or not use_history):
-            audio_base64 = None
             if user_audio is not None:
-                with tempfile.NamedTemporaryFile(suffix=".wav", delete=True, dir=str(self.output_dir)) as tmp:
-                    sf.write(tmp.name, user_audio, self.SAMPLE_RATE)
-                    tmp.seek(0)
-                    audio_base64 = base64.b64encode(tmp.read()).decode("utf-8")
+                # 将音频转为 base64 data URI 格式
+                wav_buffer = io.BytesIO()
+                sf.write(wav_buffer, user_audio, self.SAMPLE_RATE, format='WAV', subtype='PCM_16')
+                wav_buffer.seek(0)
+                audio_base64 = base64.b64encode(wav_buffer.read()).decode("utf-8")
                 messages.append({
                     "role": "user",
                     "content": [
-                        {"type": "audio_url",
-                         "audio_url": {"url": f"data:audio/wav;base64,{audio_base64}"}}
+                        {"type": "input_audio", "input_audio": {"data": f"data:audio/wav;base64,{audio_base64}", "format": "wav"}}
                     ]
                 })
             return messages
@@ -82,15 +81,15 @@ class ConversationEngine:
                 "content": assistant_history[i]
             })
         if user_audio is not None:
-            with tempfile.NamedTemporaryFile(suffix=".wav", delete=True, dir=str(self.output_dir)) as tmp:
-                sf.write(tmp.name, user_audio, self.SAMPLE_RATE)
-                tmp.seek(0)
-                audio_base64 = base64.b64encode(tmp.read()).decode("utf-8")
+            # 将音频转为 base64 data URI 格式
+            wav_buffer = io.BytesIO()
+            sf.write(wav_buffer, user_audio, self.SAMPLE_RATE, format='WAV', subtype='PCM_16')
+            wav_buffer.seek(0)
+            audio_base64 = base64.b64encode(wav_buffer.read()).decode("utf-8")
             messages.append({
                 "role": "user",
                 "content": [
-                    {"type": "audio_url",
-                     "audio_url": {"url": f"data:audio/wav;base64,{audio_base64}"}}
+                    {"type": "input_audio", "input_audio": {"data": f"data:audio/wav;base64,{audio_base64}", "format": "wav"}}
                 ]
             })
         return messages
@@ -163,8 +162,8 @@ class ConversationEngine:
             content = msg.get("content")
             if isinstance(content, list):
                 for block in content:
-                    if block.get("type") == "audio_url":
-                        block["audio_url"]["url"] = "<AUDIO_BASE64_OMITTED>"
+                    if block.get("type") == "input_audio":
+                        block["input_audio"]["data"] = "<AUDIO_BASE64_OMITTED>"
 
         await self.send_control("llm_done", {
             "timestamp": round(time.time() - self.start_wall, 3),
@@ -458,7 +457,7 @@ def create_app(prompts, delay) -> FastAPI:
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="config.yaml")
+    parser.add_argument("--config", type=str, default="src/config.yaml")
     args = parser.parse_args()
 
     with open(args.config, "r", encoding="utf-8") as f:

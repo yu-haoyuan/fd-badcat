@@ -1,0 +1,21 @@
+[2026-04-08 11:48:28] ========== client start (clean) ==========
+[2026-04-08 11:48:28] load 1 wavs file (clean)
+[2026-04-08 11:48:28] processing file : clean-000001.wav
+[2026-04-08 11:48:28] connect server: ws://127.0.0.1:18000/realtime
+[2026-04-08 11:48:28] default buffer, with 25.25s（404036 samples）
+[2026-04-08 11:48:28] start push frame clean-000001.wav, with 1579 frames, 25.25s
+[2026-04-08 11:48:29] info: {'event': 'vad_start', 'data': {'timestamp': 0.598, 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:33] info: {'event': 'vad_done', 'data': {'timestamp': 4.875, 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:34] info: {'event': 'vad_640_done', 'data': {'timestamp': 5.527, 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:34] info: {'event': 'llm_done', 'data': {'timestamp': 6.442, 'infer_time': 0.911, 'content': 'switch', 'prompt': [{'role': 'system', 'content': "你需要从日常对话的角度,而不是语法的角度去判断这句话是否说完了。\n首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'。\n以下是例子：\nuser：骑行时适合听什么 assistant：continue\nuser：游泳后洗澡时应该注意 assistant：continue\nuser：体温调节睡眠时应该注意 assistant：continue\nuser：周杰伦演唱会门票 assistant：continue\nuser：如何利用番茄工作法 assistant：continue\n\n如果你认为用户已经说完，请只输出字符串'switch'。不要输出其他内容。\n"}, {'role': 'user', 'content': [{'type': 'input_audio', 'input_audio': {'data': '<AUDIO_BASE64_OMITTED>', 'format': 'wav'}}]}], 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:35] info: {'event': 'llm_done', 'data': {'timestamp': 7.343, 'infer_time': 0.899, 'content': '折纸风车超简单，剪个圆再折就成啦', 'prompt': [{'role': 'system', 'content': '你是一个自然聊天的语音助手，要像朋友一样回答用户的问题，只回复15个字\n不要用问句回答，不要输出任何格式说明，必须根据你听到的语言回答对应的语言，只有中文or英文\n只有用户提到“重复”“重新”，才需要参考历史信息进行重复回答，否则不要关注历史信息\n如果用户否定你，例如“不是这样的”“你说的不对”必须肯定用户说的内容是对的，并附带解释一下为什么对的内容\n根据用户音频进行回应：\n'}, {'role': 'user', 'content': [{'type': 'input_audio', 'input_audio': {'data': '<AUDIO_BASE64_OMITTED>', 'format': 'wav'}}]}], 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:36] info: {'event': 'asr_done', 'data': {'timestamp': 7.645, 'turn': 0, 'state': 'LISTEN', 'content': 'How can I make simple pinwheel at home with paper?'}}
+[2026-04-08 11:48:37] tts_done: {'event': 'tts_done', 'data': {'timestamp': 8.557, 'infer_time': 1.211, 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:37] tts_done, timestamp=8.557s
+[2026-04-08 11:48:37] at 8.56s insert TTS（3.92s）
+[2026-04-08 11:48:55] client ok and audio length: 27.30s
+[2026-04-08 11:48:55] WebSocket disconnect
+[2026-04-08 11:48:55] save output exp/exp-1/HD-Track2/clean/clean-000001_output.wav, with 25.25s
+[2026-04-08 11:48:55] save TTS output: exp/exp-1/HD-Track2/clean/clean-000001_output.wav
+[2026-04-08 11:48:55] ----------------------------------------------------------------------
+[2026-04-08 11:48:55] ========== all files done (clean) ==========

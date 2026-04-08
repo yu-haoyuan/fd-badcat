@@ -166,7 +166,7 @@ async def main():
     global WS_URL
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", type=str, default="test_path_tts/config.yaml", help="YAML file config")
+    parser.add_argument("--config", type=str, default="src/config.yaml", help="YAML file config")
     args = parser.parse_args()
 
     with open(args.config, "r", encoding="utf-8") as f:

@@ -1,0 +1,35 @@
+[2026-04-08 11:47:58] ========== client start (test) ==========
+[2026-04-08 11:47:58] load 1 wavs file (test)
+[2026-04-08 11:47:58] processing file : test-000001.wav
+[2026-04-08 11:47:58] connect server: ws://127.0.0.1:18000/realtime
+[2026-04-08 11:47:58] default buffer, with 27.04s（432588 samples）
+[2026-04-08 11:47:58] start push frame test-000001.wav, with 1690 frames, 27.04s
+[2026-04-08 11:47:59] info: {'event': 'vad_start', 'data': {'timestamp': 0.931, 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:02] info: {'event': 'vad_done', 'data': {'timestamp': 3.225, 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:04] info: {'event': 'vad_done', 'data': {'timestamp': 5.829, 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:05] info: {'event': 'vad_640_done', 'data': {'timestamp': 6.482, 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:06] info: {'event': 'llm_done', 'data': {'timestamp': 7.507, 'infer_time': 1.017, 'content': 'switch', 'prompt': [{'role': 'system', 'content': "你需要从日常对话的角度,而不是语法的角度去判断这句话是否说完了。\n首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'。\n以下是例子：\nuser：骑行时适合听什么 assistant：continue\nuser：游泳后洗澡时应该注意 assistant：continue\nuser：体温调节睡眠时应该注意 assistant：continue\nuser：周杰伦演唱会门票 assistant：continue\nuser：如何利用番茄工作法 assistant：continue\n\n如果你认为用户已经说完，请只输出字符串'switch'。不要输出其他内容。\n"}, {'role': 'user', 'content': [{'type': 'input_audio', 'input_audio': {'data': '<AUDIO_BASE64_OMITTED>', 'format': 'wav'}}]}], 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:07] info: {'event': 'llm_done', 'data': {'timestamp': 8.463, 'infer_time': 0.954, 'content': '秘密计划需保密、分步、灵活调整，你想法很周全。', 'prompt': [{'role': 'system', 'content': '你是一个自然聊天的语音助手，要像朋友一样回答用户的问题，只回复15个字\n不要用问句回答，不要输出任何格式说明，必须根据你听到的语言回答对应的语言，只有中文or英文\n只有用户提到“重复”“重新”，才需要参考历史信息进行重复回答，否则不要关注历史信息\n如果用户否定你，例如“不是这样的”“你说的不对”必须肯定用户说的内容是对的，并附带解释一下为什么对的内容\n根据用户音频进行回应：\n'}, {'role': 'user', 'content': [{'type': 'input_audio', 'input_audio': {'data': '<AUDIO_BASE64_OMITTED>', 'format': 'wav'}}]}], 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:07] info: {'event': 'asr_done', 'data': {'timestamp': 8.573, 'turn': 0, 'state': 'LISTEN', 'content': 'What are the key steps to developing a secret plan?'}}
+[2026-04-08 11:48:08] tts_done: {'event': 'tts_done', 'data': {'timestamp': 9.992, 'infer_time': 1.522, 'turn': 0, 'state': 'LISTEN'}}
+[2026-04-08 11:48:08] tts_done, timestamp=9.992s
+[2026-04-08 11:48:09] at 9.99s insert TTS（5.04s）
+[2026-04-08 11:48:10] info: {'event': 'vad_start', 'data': {'turn': 0, 'state': 'SPEAK', 'timestamp': 11.091}}
+[2026-04-08 11:48:11] info: {'event': 'long_interrupt', 'data': {'timestamp': 12.609, 'turn': 1, 'state': 'LISTEN'}}
+[2026-04-08 11:48:13] info: {'event': 'vad_done', 'data': {'timestamp': 14.072, 'turn': 1, 'state': 'LISTEN'}}
+[2026-04-08 11:48:15] info: {'event': 'vad_done', 'data': {'timestamp': 16.47, 'turn': 1, 'state': 'LISTEN'}}
+[2026-04-08 11:48:16] info: {'event': 'vad_done', 'data': {'timestamp': 17.363, 'turn': 1, 'state': 'LISTEN'}}
+[2026-04-08 11:48:17] info: {'event': 'vad_done', 'data': {'timestamp': 18.776, 'turn': 1, 'state': 'LISTEN'}}
+[2026-04-08 11:48:18] info: {'event': 'vad_640_done', 'data': {'timestamp': 19.421, 'turn': 1, 'state': 'LISTEN'}}
+[2026-04-08 11:48:19] info: {'event': 'llm_done', 'data': {'timestamp': 20.331, 'infer_time': 0.907, 'content': 'switch', 'prompt': [{'role': 'system', 'content': "你需要从日常对话的角度,而不是语法的角度去判断这句话是否说完了。\n首先，如果你认为用户这句话明显没有说完，请只输出字符串'continue'。\n以下是例子：\nuser：骑行时适合听什么 assistant：continue\nuser：游泳后洗澡时应该注意 assistant：continue\nuser：体温调节睡眠时应该注意 assistant：continue\nuser：周杰伦演唱会门票 assistant：continue\nuser：如何利用番茄工作法 assistant：continue\n\n如果你认为用户已经说完，请只输出字符串'switch'。不要输出其他内容。\n"}, {'role': 'user', 'content': [{'type': 'input_audio', 'input_audio': {'data': '<AUDIO_BASE64_OMITTED>', 'format': 'wav'}}]}], 'turn': 1, 'state': 'LISTEN'}}
+[2026-04-08 11:48:20] info: {'event': 'llm_done', 'data': {'timestamp': 21.331, 'infer_time': 0.996, 'content': 'yes', 'prompt': [{'role': 'system', 'content': '你是一个严格的二分类判断器，不是聊天助手。\n你的唯一任务：\n判断当前用户音频和历史对话之间是否出现重大语义转折。\n判断规则：\n1. 以下情况都视为“没有语义转折”，必须输出 "no"：\n  - 话题内容相关\n  - 用户说出任何表示主动控制话题的短语，例如：\n    “我们不说这个了”、“换个话题”、“别聊这个了”、“先不说这个”、“换一个”等。\n2. 以下情况必须输出 "yes"：\n  - 话题明显跳跃与历史内容无关。\n强制要求（必须严格遵守）：\n- 你只能输出 "yes" 或 "no"。\n'}, {'role': 'user', 'content': [{'type': 'text', 'text': 'What are the key steps to developing a secret plan?'}]}, {'role': 'assistant', 'content': '秘密计划需保密、分步、灵活调整，你想法很周全。'}, {'role': 'user', 'content': [{'type': 'input_audio', 'input_audio': {'data': '<AUDIO_BASE64_OMITTED>', 'format': 'wav'}}]}], 'turn': 1, 'state': 'LISTEN'}}
+[2026-04-08 11:48:20] info: {'event': 'llm_done', 'data': {'timestamp': 21.789, 'infer_time': 0.458, 'content': '秘密计划需保密、分步、灵活调整，你想法很周全。', 'prompt': [{'role': 'system', 'content': '你是一个自然聊天的语音助手，要像朋友一样回答用户的问题，只回复15个字\n不要用问句回答，不要输出任何格式说明，必须根据你听到的语言回答对应的语言，只有中文or英文\n由于模型判断为这句话不来自用户说话人，你现在只需要参考历史对话，重复助手上一轮的回答，不要回答当前音频。\n'}, {'role': 'user', 'content': [{'type': 'text', 'text': 'What are the key steps to developing a secret plan?'}]}, {'role': 'assistant', 'content': '秘密计划需保密、分步、灵活调整，你想法很周全。'}], 'turn': 1, 'state': 'LISTEN'}}
+[2026-04-08 11:48:22] tts_done: {'event': 'tts_done', 'data': {'timestamp': 23.304, 'infer_time': 1.501, 'turn': 1, 'state': 'LISTEN'}}
+[2026-04-08 11:48:22] tts_done, timestamp=23.304s
+[2026-04-08 11:48:22] at 23.30s insert TTS（3.73s）
+[2026-04-08 11:48:28] client ok and audio length: 29.52s
+[2026-04-08 11:48:28] WebSocket disconnect
+[2026-04-08 11:48:28] save output exp/exp-1/HD-Track2/test/test-000001_output.wav, with 27.04s
+[2026-04-08 11:48:28] save TTS output: exp/exp-1/HD-Track2/test/test-000001_output.wav
+[2026-04-08 11:48:28] ----------------------------------------------------------------------
+[2026-04-08 11:48:28] ========== all files done (test) ==========

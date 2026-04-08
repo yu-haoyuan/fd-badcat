@@ -20,3 +20,5 @@ bash src/sc.sh
 for d in exp/exp-1/HD-Track2/*; do echo "$(basename "$d"): $(find "$d" -maxdepth 1 -type f -name "*.wav" | wc -l)"; done
 ```
 查看是否和输入文件数相同
+
+pip install numpy pyyaml requests uvicorn fastapi soundfile torchaudio torch silero-vad dashscope openai
